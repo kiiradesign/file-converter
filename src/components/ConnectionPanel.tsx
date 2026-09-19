@@ -15,7 +15,7 @@ function DialSliders({ draftKey }: { draftKey: string }) {
   // TODO: File size slider (dynamic cap + lock quality/resolution) — stubbed/hidden for now.
   // persist.presets: false — do not store Dialkit version presets.
   const values = useDialKit(
-    'Convert',
+    'Settings',
     {
       Quality: [draft?.settings.quality ?? 100, 1, 100, 1],
       Resolution: [draft?.settings.resolution ?? 100, 10, 100, 1],
@@ -42,8 +42,8 @@ function DialSliders({ draftKey }: { draftKey: string }) {
   return null
 }
 
-const PANEL_W = 260
-const PANEL_H_EST = 340
+const PANEL_W = 280
+const PANEL_H_EST = 260
 const PANEL_MARGIN = 16
 
 function clampPanelPosition(left: number, top: number) {

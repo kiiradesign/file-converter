@@ -420,124 +420,163 @@ button {
 }
 
 .connection-panel {
+  /* Dialkit-aligned tokens so format list + actions match the sliders. */
+  --dial-surface: rgba(255, 255, 255, 0.05);
+  --dial-surface-hover: rgba(255, 255, 255, 0.1);
+  --dial-surface-active: rgba(255, 255, 255, 0.11);
+  --dial-surface-subtle: rgba(255, 255, 255, 0.06);
+  --dial-text-root: #ffffff;
+  --dial-text-section: rgba(255, 255, 255, 0.7);
+  --dial-text-label: rgba(255, 255, 255, 0.7);
+  --dial-text-secondary: rgba(255, 255, 255, 0.6);
+  --dial-border: rgba(255, 255, 255, 0.1);
+  --dial-glass-bg: #212121;
+  --dial-radius: 8px;
+  --dial-row-height: 36px;
+  --dial-row-gap: 6px;
+  --dial-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+
   position: absolute;
   z-index: 30;
-  width: 260px;
-  background: var(--fc-surface);
-  border: 1px solid var(--fc-border);
-  border-radius: 16px;
-  box-shadow: var(--fc-chrome-shadow);
-  padding: 14px;
-  color: var(--fc-text);
+  width: 280px;
+  background: var(--dial-glass-bg);
+  border: 1px solid var(--dial-border);
+  border-radius: 14px;
+  box-shadow: var(--dial-shadow);
+  padding: 12px;
+  color: var(--dial-text-root);
+  font-family: system-ui, -apple-system, 'SF Pro Display', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 
 .connection-panel h3 {
   margin: 0;
   font-size: 13px;
   font-weight: 600;
+  color: var(--dial-text-root);
+  letter-spacing: 0;
 }
 
 .connection-panel__header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: 6px;
+  margin-bottom: 8px;
+  min-height: var(--dial-row-height);
 }
 
 .connection-panel__header h3 {
   flex: 1;
+  line-height: var(--dial-row-height);
 }
 
 .connection-panel__back {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  color: var(--fc-text);
+  width: var(--dial-row-height);
+  height: var(--dial-row-height);
+  border-radius: var(--dial-radius);
+  color: var(--dial-text-label);
   flex-shrink: 0;
+  background: transparent;
 }
 
 .connection-panel__back:hover {
-  background: var(--fc-surface-hover);
+  background: var(--dial-surface-hover);
+  color: var(--dial-text-root);
 }
 
 .connection-panel__hint {
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   font-size: 12px;
-  color: var(--fc-text-muted);
+  color: var(--dial-text-secondary);
 }
 
 .format-list {
   list-style: none;
-  margin: 0 0 12px;
+  margin: 0 0 10px;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--dial-row-gap);
 }
 
 .format-list button {
   width: 100%;
   text-align: left;
-  padding: 10px 12px;
-  border-radius: 10px;
+  height: var(--dial-row-height);
+  padding: 0 12px;
+  border-radius: var(--dial-radius);
   font-size: 13px;
   font-weight: 500;
-  color: var(--fc-text);
-  background: var(--fc-bg);
-  border: 1px solid var(--fc-border);
+  color: var(--dial-text-label);
+  background: var(--dial-surface);
+  border: none;
 }
 
 .format-list button:hover,
 .format-list button.is-active {
-  background: var(--fc-surface-hover);
-  border-color: var(--fc-text-muted);
+  background: var(--dial-surface-hover);
+  color: var(--dial-text-root);
 }
 
 .connection-panel label {
   display: block;
   font-size: 11px;
-  color: var(--fc-text-muted);
+  color: var(--dial-text-secondary);
   margin-bottom: 6px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
 .connection-panel .size-hint {
-  margin: 8px 0 12px;
+  margin: 8px 0 10px;
   font-size: 12px;
-  color: var(--fc-text-muted);
+  color: var(--dial-text-secondary);
 }
 
 .connection-panel .actions {
   display: flex;
-  gap: 8px;
-  margin-top: 8px;
+  gap: var(--dial-row-gap);
+  margin-top: 0;
 }
 
 .connection-panel .actions button {
   flex: 1;
-  border-radius: 10px;
-  padding: 8px 10px;
+  height: var(--dial-row-height);
+  border-radius: var(--dial-radius);
+  padding: 0 12px;
   font-size: 13px;
   font-weight: 500;
-  background: var(--fc-bg);
-  border: 1px solid var(--fc-border);
+  color: var(--dial-text-label);
+  background: var(--dial-surface);
+  border: none;
+}
+
+.connection-panel .actions button:hover {
+  background: var(--dial-surface-hover);
+  color: var(--dial-text-root);
 }
 
 .connection-panel .actions button.primary {
-  background: var(--fc-text);
-  color: var(--fc-bg);
-  border-color: transparent;
+  background: #ffffff;
+  color: #111111;
+}
+
+.connection-panel .actions button.primary:hover {
+  background: #f0f0f0;
+  color: #111111;
 }
 
 .connection-panel .dial-host {
-  min-height: 120px;
-  margin: 4px 0 8px;
+  min-height: 0;
+  margin: 0 0 4px;
 }
 
 .connection-panel .dial-host .dk-root,
+.connection-panel .dial-host .dialkit-root,
 .connection-panel .dial-host [class*='DialRoot'] {
   position: relative !important;
   inset: auto !important;
@@ -547,23 +586,68 @@ button {
   background: transparent !important;
 }
 
-/* Dialkit always ships a versions menu + clipboard copy — hide both in this app.
-   The canvas is the version history; do not surface Dialkit presets/clipboard. */
+/* Flatten Dialkit’s own panel chrome — we already provide the outer shell + title. */
+.connection-panel .dial-host--no-versions .dialkit-panel,
+.connection-panel .dial-host--no-versions .dialkit-panel-wrapper,
+.connection-panel .dial-host--no-versions .dialkit-panel-inline {
+  position: static !important;
+  width: 100% !important;
+  max-height: none !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+.connection-panel .dial-host--no-versions .dialkit-panel-inner {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+/* Collapse Dialkit section header + versions/clipboard toolbar (source of the gap). */
+.connection-panel .dial-host--no-versions .dialkit-panel-header,
+.connection-panel .dial-host--no-versions .dialkit-folder-section > .dialkit-folder-header,
+.connection-panel .dial-host--no-versions .dialkit-panel-section-toolbar-clip,
+.connection-panel .dial-host--no-versions .dialkit-panel-section-toolbar,
+.connection-panel .dial-host--no-versions .dialkit-panel-toolbar,
 .connection-panel .dial-host--no-versions .dialkit-preset-manager,
 .connection-panel .dial-host--no-versions .dialkit-toolbar-copy,
 .connection-panel .dial-host--no-versions .dialkit-folder-copy,
-.connection-panel .dial-host--no-versions button[title="Copy parameters"],
-.connection-panel .dial-host--no-versions button[aria-label="Copy parameters"],
-.connection-panel .dial-host--no-versions button[aria-label="Copied parameters"],
+.connection-panel .dial-host--no-versions button[title='Copy parameters'],
+.connection-panel .dial-host--no-versions button[aria-label='Copy parameters'],
+.connection-panel .dial-host--no-versions button[aria-label='Copied parameters'],
 .connection-panel .dial-host--no-versions .dialkit-toolbar-add.dialkit-toolbar-primary {
   display: none !important;
   visibility: hidden !important;
   pointer-events: none !important;
-  width: 0 !important;
   height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
   margin: 0 !important;
   padding: 0 !important;
+  border: none !important;
   overflow: hidden !important;
+}
+
+.connection-panel .dial-host--no-versions .dialkit-folder-section {
+  --dial-section-header-height: 0px;
+  --dial-panel-header-height: 0px;
+}
+
+.connection-panel .dial-host--no-versions .dialkit-folder-root > .dialkit-folder-content > .dialkit-folder-inner,
+.connection-panel .dial-host--no-versions .dialkit-folder-inner {
+  padding: 0 !important;
+  gap: var(--dial-row-gap) !important;
+}
+
+.connection-panel .dial-host--no-versions .dialkit-folder-content {
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 .draft-wire {
