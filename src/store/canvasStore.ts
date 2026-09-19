@@ -12,6 +12,7 @@ import {
 import { create } from 'zustand'
 import {
   compatibleTargets,
+  encodeFormatFromExtension,
   rewriteExtension,
   uniqueFileName,
   WEB_ENCODE_FORMATS,
@@ -129,9 +130,7 @@ function fileLabel(name: string, isResult: boolean, format?: ConvertFormat): str
 }
 
 function formatFromExtension(ext: string): ConvertFormat {
-  const e = ext.toLowerCase() === 'jpeg' ? 'jpg' : ext.toLowerCase()
-  if (e === 'png' || e === 'jpg' || e === 'webp') return e
-  return DEFAULT_SETTINGS.format
+  return encodeFormatFromExtension(ext) ?? DEFAULT_SETTINGS.format
 }
 
 /** Names already used by file nodes on a canvas (labels + stored file names). */

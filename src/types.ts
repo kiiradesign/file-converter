@@ -1,6 +1,7 @@
-export type ImageFormat = 'png' | 'jpg' | 'webp'
+export type ImageFormat = 'png' | 'jpg' | 'webp' | 'avif' | 'gif' | 'bmp'
 
-export type ConvertFormat = ImageFormat
+/** Document targets we can produce in the browser (includes PDF). */
+export type ConvertFormat = ImageFormat | 'pdf'
 
 export interface ConvertSettings {
   format: ConvertFormat

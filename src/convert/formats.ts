@@ -1,4 +1,4 @@
-import type { ConvertFormat, ImageFormat } from '../types'
+import type { ConvertFormat } from '../types'
 
 export const IMAGE_EXTENSIONS = new Set([
   'png',
@@ -10,10 +10,22 @@ export const IMAGE_EXTENSIONS = new Set([
   'avif',
   'heic',
   'heif',
+  'pdf',
 ])
 
-/** Formats we can actually encode in the browser (canvas.toBlob). */
-export const WEB_ENCODE_FORMATS: ImageFormat[] = ['png', 'jpg', 'webp']
+/**
+ * Formats we can actually encode in the browser today.
+ * HEIC/HEIF encode is deferred (no viable in-browser encoder yet).
+ */
+export const WEB_ENCODE_FORMATS: ConvertFormat[] = [
+  'png',
+  'jpg',
+  'webp',
+  'avif',
+  'gif',
+  'bmp',
+  'pdf',
+]
 
 const MIME_BY_EXT: Record<string, string> = {
   png: 'image/png',
@@ -45,18 +57,22 @@ export function mimeForExtension(ext: string): string {
 }
 
 export function isImageExtension(ext: string): boolean {
-  return IMAGE_EXTENSIONS.has(ext.toLowerCase())
+  const e = ext.toLowerCase()
+  return IMAGE_EXTENSIONS.has(e) && e !== 'pdf'
 }
 
 export function canDecodeInBrowser(ext: string): boolean {
   const e = ext.toLowerCase()
-  return ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'].includes(e)
+  // AVIF decode via <img> when the browser supports it; HEIC typically does not.
+  return ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'avif'].includes(e)
 }
 
 /** Map a file extension to an encode format when we can produce it. */
 export function encodeFormatFromExtension(ext: string): ConvertFormat | null {
   const e = ext.toLowerCase() === 'jpeg' ? 'jpg' : ext.toLowerCase()
-  if (e === 'png' || e === 'jpg' || e === 'webp') return e
+  if ((WEB_ENCODE_FORMATS as string[]).includes(e)) {
+    return e as ConvertFormat
+  }
   return null
 }
 
@@ -64,6 +80,7 @@ export function encodeFormatFromExtension(ext: string): ConvertFormat | null {
  * Compatible encode targets for a source.
  * Source’s own format is listed first when we can encode it (re-encode / same type),
  * then the remaining web encode formats. Never lists formats we cannot encode.
+ * HEIC is decode-limited and never appears as a target.
  */
 export function compatibleTargets(
   sourceExt: string,
@@ -83,7 +100,12 @@ export function compatibleTargets(
 export function outputMime(format: ConvertFormat): string {
   if (format === 'jpg') return 'image/jpeg'
   if (format === 'png') return 'image/png'
-  return 'image/webp'
+  if (format === 'webp') return 'image/webp'
+  if (format === 'avif') return 'image/avif'
+  if (format === 'gif') return 'image/gif'
+  if (format === 'bmp') return 'image/bmp'
+  if (format === 'pdf') return 'application/pdf'
+  return 'application/octet-stream'
 }
 
 export function formatLabel(format: ConvertFormat): string {

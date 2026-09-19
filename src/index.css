@@ -7,30 +7,34 @@
 }
 
 :root {
-  /* Geist dark (vercel.com/design.dark.md) */
+  /*
+   * Vercel / Geist-adjacent dark canvas tokens.
+   * Borders use #262626 (not muddy #2e2e2e). Surfaces stay near-black for
+   * sharp contrast on #000 — matching Vercel product chrome.
+   */
   --fc-bg: #000000;
-  --fc-surface: #1a1a1a;
-  --fc-surface-hover: #292929;
-  --fc-surface-active: #292929;
-  --fc-row: #1f1f1f;
-  --fc-border: #2e2e2e;
+  --fc-surface: #111111;
+  --fc-surface-hover: #1a1a1a;
+  --fc-surface-active: #262626;
+  --fc-row: #171717;
+  --fc-border: #262626;
+  --fc-border-strong: #404040;
   --fc-text: #ededed;
-  --fc-text-muted: #a0a0a0;
-  --fc-text-subtle: #8f8f8f;
-  --fc-dot: #2e2e2e;
-  --fc-preview: #d1d5db;
-  --fc-wire: #8a8a8a;
-  --fc-folder: #5b9cff;
-  --fc-folder-tab: #7ab0ff;
-  /* Geist radius: panels/controls = 6px; Dialkit rows keep 8px */
+  --fc-text-muted: #888888;
+  --fc-text-subtle: #666666;
+  --fc-dot: #262626;
+  --fc-preview: #e5e5e5;
+  --fc-wire: #666666;
+  --fc-folder: #0070f3;
+  --fc-folder-tab: #3291ff;
+  /* Geist control radius */
   --fc-radius: 6px;
   --fc-radius-lg: 6px;
   --fc-radius-md: 6px;
   --fc-radius-sm: 6px;
   --fc-chrome-shadow: none;
   --fc-focus-gap: #000000;
-  --fc-focus-ring: #47a8ff;
-  /* Emil / creative-editor ease-out */
+  --fc-focus-ring: #0070f3;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-out-soft: cubic-bezier(0.175, 0.885, 0.32, 1.1);
   --duration-fast: 140ms;
@@ -39,22 +43,25 @@
 }
 
 [data-theme='light'] {
-  /* Geist light (vercel.com/design.md) */
+  /* Vercel / Geist light */
   --fc-bg: #fafafa;
   --fc-surface: #ffffff;
-  --fc-surface-hover: #ebebeb;
-  --fc-surface-active: #e6e6e6;
-  --fc-row: #f2f2f2;
+  --fc-surface-hover: #f5f5f5;
+  --fc-surface-active: #ebebeb;
+  --fc-row: #f5f5f5;
   --fc-border: #eaeaea;
+  --fc-border-strong: #c4c4c4;
   --fc-text: #171717;
-  --fc-text-muted: #4d4d4d;
-  --fc-text-subtle: #8f8f8f;
+  --fc-text-muted: #666666;
+  --fc-text-subtle: #999999;
   --fc-dot: #eaeaea;
-  --fc-preview: #e4e4e7;
-  --fc-wire: #a1a1aa;
+  --fc-preview: #eaeaea;
+  --fc-wire: #999999;
+  --fc-folder: #0070f3;
+  --fc-folder-tab: #3291ff;
   --fc-chrome-shadow: none;
   --fc-focus-gap: #ffffff;
-  --fc-focus-ring: #006bff;
+  --fc-focus-ring: #0070f3;
   color-scheme: light;
 }
 
@@ -299,7 +306,7 @@ button {
 
 .file-node.is-hovered .file-node__card,
 .file-node:hover .file-node__card {
-  border-color: var(--fc-text-subtle);
+  border-color: var(--fc-border-strong);
 }
 
 .file-node__card-media {
@@ -328,18 +335,19 @@ button {
   width: 28px;
   height: 28px;
   border-radius: 999px;
-  background: #fff;
-  color: #111;
+  background: #ffffff;
+  color: #000000;
   display: grid;
   place-items: center;
-  border: 1px solid var(--fc-border);
+  border: 1px solid var(--fc-border-strong);
   box-shadow: none;
   opacity: 0;
   pointer-events: none;
   transition:
     opacity var(--duration-hover) var(--ease-out),
     transform var(--duration-hover) var(--ease-out),
-    background-color var(--duration-hover) var(--ease-out);
+    background-color var(--duration-hover) var(--ease-out),
+    border-color var(--duration-hover) var(--ease-out);
   z-index: 5;
 }
 
@@ -477,11 +485,11 @@ button {
   width: 28px;
   height: 28px;
   border-radius: 999px;
-  background: #fff;
-  color: #111;
+  background: #ffffff;
+  color: #000000;
   display: grid;
   place-items: center;
-  border: 1px solid var(--fc-border);
+  border: 1px solid var(--fc-border-strong);
   box-shadow: none;
   opacity: 0;
   pointer-events: none;
@@ -510,17 +518,17 @@ button {
 }
 
 .connection-panel {
-  /* Geist panel shell + Dialkit row tokens (radius 8 / row 36 kept for Dialkit). */
-  --dial-surface: #1f1f1f;
-  --dial-surface-hover: #292929;
-  --dial-surface-active: #292929;
-  --dial-surface-subtle: #2e2e2e;
-  --dial-text-root: #ededed;
-  --dial-text-section: #a0a0a0;
-  --dial-text-label: #a0a0a0;
-  --dial-text-secondary: #a0a0a0;
-  --dial-border: #2e2e2e;
-  --dial-glass-bg: #1a1a1a;
+  /* Dialkit rows stay 8px / 36px; colors mirror Geist chrome tokens. */
+  --dial-surface: var(--fc-row);
+  --dial-surface-hover: var(--fc-surface-hover);
+  --dial-surface-active: var(--fc-surface-active);
+  --dial-surface-subtle: var(--fc-border);
+  --dial-text-root: var(--fc-text);
+  --dial-text-section: var(--fc-text-muted);
+  --dial-text-label: var(--fc-text-muted);
+  --dial-text-secondary: var(--fc-text-muted);
+  --dial-border: var(--fc-border);
+  --dial-glass-bg: var(--fc-surface);
   --dial-radius: 8px;
   --dial-row-height: 36px;
   --dial-row-gap: 6px;
@@ -540,16 +548,16 @@ button {
 }
 
 [data-theme='light'] .connection-panel {
-  --dial-surface: #f2f2f2;
-  --dial-surface-hover: #ebebeb;
-  --dial-surface-active: #e6e6e6;
-  --dial-surface-subtle: #eaeaea;
-  --dial-text-root: #171717;
-  --dial-text-section: #4d4d4d;
-  --dial-text-label: #4d4d4d;
-  --dial-text-secondary: #4d4d4d;
-  --dial-border: #eaeaea;
-  --dial-glass-bg: #ffffff;
+  --dial-surface: var(--fc-row);
+  --dial-surface-hover: var(--fc-surface-hover);
+  --dial-surface-active: var(--fc-surface-active);
+  --dial-surface-subtle: var(--fc-border);
+  --dial-text-root: var(--fc-text);
+  --dial-text-section: var(--fc-text-muted);
+  --dial-text-label: var(--fc-text-muted);
+  --dial-text-secondary: var(--fc-text-muted);
+  --dial-border: var(--fc-border);
+  --dial-glass-bg: var(--fc-surface);
 }
 
 .connection-panel h3 {

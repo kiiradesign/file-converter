@@ -1,5 +1,9 @@
 import type { ConvertFormat, ConvertSettings } from '../../types'
 import { outputMime } from '../formats'
+import { encodeAvifBlob } from './avif'
+import { encodeBmp } from './bmp'
+import { encodeGif } from './gif'
+import { encodePdf } from './pdf'
 
 function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -10,9 +14,30 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   })
 }
 
+function drawScaled(
+  img: HTMLImageElement,
+  format: ConvertFormat,
+  scalePercent: number,
+): { canvas: HTMLCanvasElement; imageData: ImageData } {
+  const scale = Math.min(100, Math.max(1, scalePercent)) / 100
+  const w = Math.max(1, Math.round(img.naturalWidth * scale))
+  const h = Math.max(1, Math.round(img.naturalHeight * scale))
+  const canvas = document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
+  if (!ctx) throw new Error('No 2d context')
+  if (format === 'jpg' || format === 'bmp') {
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, w, h)
+  }
+  ctx.drawImage(img, 0, 0, w, h)
+  return { canvas, imageData: ctx.getImageData(0, 0, w, h) }
+}
+
 function canvasToBlob(
   canvas: HTMLCanvasElement,
-  format: ConvertFormat,
+  format: 'png' | 'jpg' | 'webp',
   quality: number,
 ): Promise<Blob> {
   const mime = outputMime(format)
@@ -36,24 +61,30 @@ async function encodeOnce(
   quality: number,
   scalePercent: number,
 ): Promise<Blob> {
-  const scale = Math.min(100, Math.max(1, scalePercent)) / 100
-  const w = Math.max(1, Math.round(img.naturalWidth * scale))
-  const h = Math.max(1, Math.round(img.naturalHeight * scale))
-  const canvas = document.createElement('canvas')
-  canvas.width = w
-  canvas.height = h
-  const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('No 2d context')
-  if (format === 'jpg') {
-    ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, w, h)
+  const { canvas, imageData } = drawScaled(img, format, scalePercent)
+
+  if (format === 'png' || format === 'jpg' || format === 'webp') {
+    return canvasToBlob(canvas, format, quality)
   }
-  ctx.drawImage(img, 0, 0, w, h)
-  return canvasToBlob(canvas, format, quality)
+  if (format === 'avif') {
+    return encodeAvifBlob(imageData, quality)
+  }
+  if (format === 'gif') {
+    // Fewer colors at lower quality ≈ smaller palette.
+    const colors = Math.max(8, Math.round(32 + (quality / 100) * 224))
+    return encodeGif(imageData, colors)
+  }
+  if (format === 'bmp') {
+    return encodeBmp(imageData)
+  }
+  if (format === 'pdf') {
+    return encodePdf(imageData)
+  }
+  throw new Error(`Unsupported encode format: ${format}`)
 }
 
 /**
- * Encode an image in-browser. Quality + resolution drive encode.
+ * Encode an image in-browser. Quality + resolution drive encode where supported.
  * If maxBytes is set, binary-search quality then reduce scale until under cap.
  */
 export async function convertImageWeb(
@@ -70,8 +101,13 @@ export async function convertImageWeb(
   let blob = await encodeOnce(img, settings.format, quality, scale)
   onProgress?.(0.7)
 
-  if (settings.maxBytes != null && settings.maxBytes > 0) {
-    // Search quality first
+  const qualityDriven =
+    settings.format === 'jpg' ||
+    settings.format === 'webp' ||
+    settings.format === 'avif' ||
+    settings.format === 'gif'
+
+  if (settings.maxBytes != null && settings.maxBytes > 0 && qualityDriven) {
     let lo = 5
     let hi = quality
     let best = blob
@@ -87,11 +123,18 @@ export async function convertImageWeb(
     }
     blob = best
 
-    // Then scale if still over
     let guard = 0
     while (blob.size > settings.maxBytes && scale > 10 && guard < 10) {
       scale = Math.max(10, Math.round(scale * 0.85))
       blob = await encodeOnce(img, settings.format, Math.max(5, lo - 1 || quality), scale)
+      guard++
+    }
+  } else if (settings.maxBytes != null && settings.maxBytes > 0) {
+    // PNG/BMP/PDF: only resolution helps size.
+    let guard = 0
+    while (blob.size > settings.maxBytes && scale > 10 && guard < 10) {
+      scale = Math.max(10, Math.round(scale * 0.85))
+      blob = await encodeOnce(img, settings.format, quality, scale)
       guard++
     }
   }

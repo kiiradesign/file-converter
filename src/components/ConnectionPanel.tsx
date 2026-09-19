@@ -193,7 +193,7 @@ export function ConnectionPanel() {
               className="primary"
               onClick={() => void confirmDraft()}
             >
-              Convert
+              {draft.mode === 'adjust' ? 'Compress' : 'Convert'}
             </button>
           </div>
         </>
@@ -210,7 +210,21 @@ function estimateSize(
   const scale = (settings.resolution / 100) ** 2
   const q = settings.quality / 100
   const formatFactor =
-    settings.format === 'png' ? 0.9 : settings.format === 'jpg' ? 0.35 : 0.28
+    settings.format === 'png'
+      ? 0.9
+      : settings.format === 'jpg'
+        ? 0.35
+        : settings.format === 'webp'
+          ? 0.28
+          : settings.format === 'avif'
+            ? 0.2
+            : settings.format === 'gif'
+              ? 0.45
+              : settings.format === 'bmp'
+                ? 1.1
+                : settings.format === 'pdf'
+                  ? 0.95
+                  : 0.3
   return Math.max(
     1024,
     Math.round(sourceBytes * scale * (0.25 + q * 0.75) * formatFactor),
