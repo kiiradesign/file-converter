@@ -12,7 +12,7 @@ export const IMAGE_EXTENSIONS = new Set([
   'heif',
 ])
 
-/** Formats we can actually encode in the browser for milestone 1. */
+/** Formats we can actually encode in the browser (canvas.toBlob). */
 export const WEB_ENCODE_FORMATS: ImageFormat[] = ['png', 'jpg', 'webp']
 
 const MIME_BY_EXT: Record<string, string> = {
@@ -53,7 +53,18 @@ export function canDecodeInBrowser(ext: string): boolean {
   return ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'].includes(e)
 }
 
-/** Compatible encode targets for a source, given current runtime capabilities. */
+/** Map a file extension to an encode format when we can produce it. */
+export function encodeFormatFromExtension(ext: string): ConvertFormat | null {
+  const e = ext.toLowerCase() === 'jpeg' ? 'jpg' : ext.toLowerCase()
+  if (e === 'png' || e === 'jpg' || e === 'webp') return e
+  return null
+}
+
+/**
+ * Compatible encode targets for a source.
+ * Source’s own format is listed first when we can encode it (re-encode / same type),
+ * then the remaining web encode formats. Never lists formats we cannot encode.
+ */
 export function compatibleTargets(
   sourceExt: string,
   available: ConvertFormat[] = WEB_ENCODE_FORMATS,
@@ -61,8 +72,12 @@ export function compatibleTargets(
   if (!isImageExtension(sourceExt) || !canDecodeInBrowser(sourceExt)) {
     return []
   }
-  const src = sourceExt.toLowerCase() === 'jpeg' ? 'jpg' : sourceExt.toLowerCase()
-  return available.filter((f) => f !== src || available.length === 1)
+  const src = encodeFormatFromExtension(sourceExt)
+  const rest = available.filter((f) => f !== src)
+  if (src && available.includes(src)) {
+    return [src, ...rest]
+  }
+  return rest.length ? rest : [...available]
 }
 
 export function outputMime(format: ConvertFormat): string {

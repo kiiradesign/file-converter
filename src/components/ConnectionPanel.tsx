@@ -57,23 +57,13 @@ function clampPanelPosition(left: number, top: number) {
 
 function panelPositionForNode(
   source: AppNode,
-  mode: 'connect' | 'adjust',
   flowToScreenPosition: (p: { x: number; y: number }) => { x: number; y: number },
 ): { left: number; top: number } {
   const measured = (source as Node).measured
   const w = measured?.width ?? (source.data.kind === 'folder' ? 120 : 180)
   const h = measured?.height ?? (source.data.kind === 'folder' ? 120 : 240)
 
-  if (mode === 'adjust') {
-    // Near the top-center of the node (Adjust toolbar).
-    const screen = flowToScreenPosition({
-      x: source.position.x + w / 2,
-      y: source.position.y,
-    })
-    return clampPanelPosition(screen.x - PANEL_W / 2, screen.y + 8)
-  }
-
-  // Near the + on the right edge of the card.
+  // Same anchor for + and Adjust: to the right of the node (near the plus handle).
   const screen = flowToScreenPosition({
     x: source.position.x + w + 12,
     y: source.position.y + h * 0.45,
@@ -113,7 +103,7 @@ export function ConnectionPanel() {
 
   const position = useMemo(() => {
     if (!draft || !source) return { left: 24, top: 96 }
-    return panelPositionForNode(source, draft.mode, flowToScreenPosition)
+    return panelPositionForNode(source, flowToScreenPosition)
     // Recompute when viewport zooms/pans (zoom updates on move) or node moves.
   }, [draft, source, flowToScreenPosition, zoom, source?.position.x, source?.position.y])
 
