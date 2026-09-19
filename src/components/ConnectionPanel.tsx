@@ -1,8 +1,9 @@
 import { DialRoot, useDialKit } from 'dialkit'
+import { useReactFlow, type Node } from '@xyflow/react'
 import { ArrowLeft } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { compatibleTargets, formatLabel, WEB_ENCODE_FORMATS } from '../convert/formats'
-import { useCanvasStore } from '../store/canvasStore'
+import { useCanvasStore, type AppNode } from '../store/canvasStore'
 import type { ConvertFormat } from '../types'
 import 'dialkit/styles.css'
 
@@ -12,13 +13,18 @@ function DialSliders({ draftKey }: { draftKey: string }) {
   const last = useRef({ q: -1, r: -1 })
 
   // TODO: File size slider (dynamic cap + lock quality/resolution) — stubbed/hidden for now.
+  // persist.presets: false — do not store Dialkit version presets.
   const values = useDialKit(
     'Convert',
     {
       Quality: [draft?.settings.quality ?? 100, 1, 100, 1],
       Resolution: [draft?.settings.resolution ?? 100, 10, 100, 1],
     },
-    { id: `convert-draft-${draftKey}`, persist: false, defaultCollapsed: false },
+    {
+      id: `convert-draft-${draftKey}`,
+      persist: false,
+      defaultCollapsed: false,
+    },
   )
 
   useEffect(() => {
@@ -36,10 +42,51 @@ function DialSliders({ draftKey }: { draftKey: string }) {
   return null
 }
 
+const PANEL_W = 260
+const PANEL_H_EST = 340
+const PANEL_MARGIN = 16
+
+function clampPanelPosition(left: number, top: number) {
+  const maxLeft = Math.max(PANEL_MARGIN, window.innerWidth - PANEL_W - PANEL_MARGIN)
+  const maxTop = Math.max(PANEL_MARGIN, window.innerHeight - PANEL_H_EST - PANEL_MARGIN)
+  return {
+    left: Math.min(Math.max(PANEL_MARGIN, left), maxLeft),
+    top: Math.min(Math.max(PANEL_MARGIN, top), maxTop),
+  }
+}
+
+function panelPositionForNode(
+  source: AppNode,
+  mode: 'connect' | 'adjust',
+  flowToScreenPosition: (p: { x: number; y: number }) => { x: number; y: number },
+): { left: number; top: number } {
+  const measured = (source as Node).measured
+  const w = measured?.width ?? (source.data.kind === 'folder' ? 120 : 180)
+  const h = measured?.height ?? (source.data.kind === 'folder' ? 120 : 240)
+
+  if (mode === 'adjust') {
+    // Near the top-center of the node (Adjust toolbar).
+    const screen = flowToScreenPosition({
+      x: source.position.x + w / 2,
+      y: source.position.y,
+    })
+    return clampPanelPosition(screen.x - PANEL_W / 2, screen.y + 8)
+  }
+
+  // Near the + on the right edge of the card.
+  const screen = flowToScreenPosition({
+    x: source.position.x + w + 12,
+    y: source.position.y + h * 0.45,
+  })
+  return clampPanelPosition(screen.x + 8, screen.y - 48)
+}
+
 export function ConnectionPanel() {
+  const { flowToScreenPosition } = useReactFlow()
   const draft = useCanvasStore((s) => s.draft)
   const nodes = useCanvasStore((s) => s.nodes)
   const files = useCanvasStore((s) => s.files)
+  const zoom = useCanvasStore((s) => s.zoom)
   const updateDraftSettings = useCanvasStore((s) => s.updateDraftSettings)
   const confirmDraft = useCanvasStore((s) => s.confirmDraft)
   const cancelDraft = useCanvasStore((s) => s.cancelDraft)
@@ -64,6 +111,12 @@ export function ConnectionPanel() {
     setView(draft.mode === 'adjust' ? 'sliders' : 'formats')
   }, [draft?.sourceNodeId, draft?.mode])
 
+  const position = useMemo(() => {
+    if (!draft || !source) return { left: 24, top: 96 }
+    return panelPositionForNode(source, draft.mode, flowToScreenPosition)
+    // Recompute when viewport zooms/pans (zoom updates on move) or node moves.
+  }, [draft, source, flowToScreenPosition, zoom, source?.position.x, source?.position.y])
+
   if (!draft || !source) return null
 
   const estimated =
@@ -76,7 +129,7 @@ export function ConnectionPanel() {
   return (
     <div
       className="connection-panel"
-      style={{ top: 96, right: 24 }}
+      style={{ top: position.top, left: position.left, right: 'auto' }}
       onMouseDown={(e) => e.stopPropagation()}
     >
       {view === 'formats' ? (
@@ -130,7 +183,7 @@ export function ConnectionPanel() {
             </h3>
           </div>
 
-          <div className="dial-host">
+          <div className="dial-host dial-host--no-versions">
             <DialRoot mode="inline" theme="dark" productionEnabled defaultOpen />
             <DialSliders draftKey={dialKey} />
           </div>
@@ -150,7 +203,7 @@ export function ConnectionPanel() {
               className="primary"
               onClick={() => void confirmDraft()}
             >
-              {draft.mode === 'adjust' ? 'Create new' : 'Convert'}
+              Convert
             </button>
           </div>
         </>

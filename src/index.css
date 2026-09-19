@@ -547,6 +547,25 @@ button {
   background: transparent !important;
 }
 
+/* Dialkit always ships a versions menu + clipboard copy — hide both in this app.
+   The canvas is the version history; do not surface Dialkit presets/clipboard. */
+.connection-panel .dial-host--no-versions .dialkit-preset-manager,
+.connection-panel .dial-host--no-versions .dialkit-toolbar-copy,
+.connection-panel .dial-host--no-versions .dialkit-folder-copy,
+.connection-panel .dial-host--no-versions button[title="Copy parameters"],
+.connection-panel .dial-host--no-versions button[aria-label="Copy parameters"],
+.connection-panel .dial-host--no-versions button[aria-label="Copied parameters"],
+.connection-panel .dial-host--no-versions .dialkit-toolbar-add.dialkit-toolbar-primary {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
 .draft-wire {
   pointer-events: none;
 }

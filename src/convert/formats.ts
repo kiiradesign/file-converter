@@ -80,3 +80,26 @@ export function rewriteExtension(originalName: string, format: ConvertFormat): s
   const ext = format === 'jpg' ? 'jpg' : format
   return `${base}.${ext}`
 }
+
+/**
+ * Ensure a result filename is unique among taken names.
+ * Prefers the desired name; otherwise stem-2.ext, stem-3.ext, …
+ * Preserves the stem’s case.
+ */
+export function uniqueFileName(desired: string, taken: Iterable<string>): string {
+  const used = new Set(
+    [...taken].filter(Boolean).map((n) => n.toLowerCase()),
+  )
+  if (!used.has(desired.toLowerCase())) return desired
+
+  const base = basenameWithoutExt(desired)
+  const dot = desired.lastIndexOf('.')
+  const ext = dot >= 0 ? desired.slice(dot + 1) : ''
+  let i = 2
+  while (i < 10_000) {
+    const candidate = ext ? `${base}-${i}.${ext}` : `${base}-${i}`
+    if (!used.has(candidate.toLowerCase())) return candidate
+    i++
+  }
+  return `${base}-${crypto.randomUUID().slice(0, 6)}${ext ? `.${ext}` : ''}`
+}

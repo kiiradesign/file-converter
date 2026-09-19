@@ -13,6 +13,7 @@ import { create } from 'zustand'
 import {
   compatibleTargets,
   rewriteExtension,
+  uniqueFileName,
   WEB_ENCODE_FORMATS,
 } from '../convert/formats'
 import { runConversion } from '../convert/jobs'
@@ -131,6 +132,36 @@ function formatFromExtension(ext: string): ConvertFormat {
   const e = ext.toLowerCase() === 'jpeg' ? 'jpg' : ext.toLowerCase()
   if (e === 'png' || e === 'jpg' || e === 'webp') return e
   return DEFAULT_SETTINGS.format
+}
+
+/** Names already used by file nodes on a canvas (labels + stored file names). */
+function takenNamesOnCanvas(
+  nodes: AppNode[],
+  files: Record<string, FileEntry>,
+  canvasId: string | null,
+): string[] {
+  const names: string[] = []
+  for (const n of nodes) {
+    if (n.data.canvasId !== canvasId) continue
+    if (n.data.kind !== 'file') continue
+    if (n.data.label) names.push(n.data.label)
+    const f = files[n.data.fileId]
+    if (f?.name) names.push(f.name)
+  }
+  return names
+}
+
+function uniqueResultName(
+  sourceName: string,
+  format: ConvertFormat,
+  nodes: AppNode[],
+  files: Record<string, FileEntry>,
+  canvasId: string | null,
+): string {
+  return uniqueFileName(
+    rewriteExtension(sourceName, format),
+    takenNamesOnCanvas(nodes, files, canvasId),
+  )
 }
 
 export const useCanvasStore = create<CanvasState>((set, get) => ({
@@ -421,10 +452,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     if (node.data.kind === 'file') {
       const file = get().files[node.data.fileId]
       if (!file) return
-      const name = node.data.isResult && node.data.settings
-        ? rewriteExtension(file.name, node.data.settings.format)
-        : file.name
-      downloadBlob(file.blob, name)
+      downloadBlob(file.blob, file.name)
       return
     }
 
@@ -467,10 +495,17 @@ async function convertFileNode(
   const resultNodeId = uid('node')
   const resultFileId = uid('file')
   const canvasId = sourceNode.data.canvasId
+  const resultName = uniqueResultName(
+    sourceFile.name,
+    settings.format,
+    get().nodes,
+    get().files,
+    canvasId,
+  )
 
   const placeholder: FileEntry = {
     id: resultFileId,
-    name: rewriteExtension(sourceFile.name, settings.format),
+    name: resultName,
     extension: settings.format === 'jpg' ? 'jpg' : settings.format,
     mimeType: 'application/octet-stream',
     blob: new Blob(),
@@ -494,7 +529,7 @@ async function convertFileNode(
         data: {
           kind: 'file',
           fileId: resultFileId,
-          label: fileLabel(sourceFile.name, true, settings.format),
+          label: resultName,
           isResult: true,
           canvasId,
           settings,
@@ -643,6 +678,7 @@ async function convertFolder(
   const newChildIds: string[] = []
   const filesUpdate: Record<string, FileEntry> = {}
   const newNodes: AppNode[] = []
+  const takenInFolder: string[] = []
 
   let i = 0
   for (const fid of childIds) {
@@ -656,9 +692,14 @@ async function convertFolder(
       const blob = await runConversion(sourceFile, settings)
       const objectUrl = URL.createObjectURL(blob)
       const resultFileId = uid('file')
+      const resultName = uniqueFileName(
+        rewriteExtension(sourceFile.name, settings.format),
+        takenInFolder,
+      )
+      takenInFolder.push(resultName)
       const entry: FileEntry = {
         id: resultFileId,
-        name: rewriteExtension(sourceFile.name, settings.format),
+        name: resultName,
         extension: settings.format === 'jpg' ? 'jpg' : settings.format,
         mimeType: blob.type,
         blob,
@@ -674,7 +715,7 @@ async function convertFolder(
         data: {
           kind: 'file',
           fileId: resultFileId,
-          label: fileLabel(sourceFile.name, true, settings.format),
+          label: resultName,
           isResult: true,
           canvasId: newFolderId,
           settings,
