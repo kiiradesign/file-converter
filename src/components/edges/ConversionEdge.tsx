@@ -1,8 +1,4 @@
-import {
-  BaseEdge,
-  getBezierPath,
-  type EdgeProps,
-} from '@xyflow/react'
+import { BaseEdge, type EdgeProps } from '@xyflow/react'
 import { memo } from 'react'
 
 function ConversionEdgeComponent({
@@ -11,19 +7,11 @@ function ConversionEdgeComponent({
   sourceY,
   targetX,
   targetY,
-  sourcePosition,
-  targetPosition,
   style,
   markerEnd,
 }: EdgeProps) {
-  const [path] = getBezierPath({
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    sourcePosition,
-    targetPosition,
-  })
+  const dx = Math.max(80, Math.abs(targetX - sourceX) * 0.45)
+  const path = `M ${sourceX},${sourceY} C ${sourceX + dx},${sourceY} ${targetX - dx},${targetY} ${targetX},${targetY}`
 
   return (
     <BaseEdge
@@ -32,7 +20,8 @@ function ConversionEdgeComponent({
       markerEnd={markerEnd}
       style={{
         stroke: 'var(--fc-wire)',
-        strokeWidth: 1.5,
+        strokeWidth: 1.6,
+        fill: 'none',
         ...style,
       }}
     />

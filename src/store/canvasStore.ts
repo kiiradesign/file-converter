@@ -388,7 +388,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     }
 
     const settings = { ...draft.settings }
-    const offset = { x: 280, y: 0 }
+    const offset =
+      draft.mode === 'adjust'
+        ? { x: 280, y: 40 }
+        : { x: 280, y: 0 }
 
     if (sourceNode.data.kind === 'folder') {
       await convertFolder(get, set, sourceNode, settings, offset)

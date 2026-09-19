@@ -133,10 +133,10 @@ function CanvasInner() {
         <Background
           id="dots"
           variant={BackgroundVariant.Dots}
-          gap={22}
-          size={1.6}
+          gap={28}
+          size={1.25}
           color="var(--fc-dot)"
-          style={{ backgroundColor: 'var(--fc-bg)' }}
+          bgColor="var(--fc-bg)"
         />
       </ReactFlow>
 
