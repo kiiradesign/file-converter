@@ -1,5 +1,10 @@
 import JSZip from 'jszip'
-import { mimeForExtension, normalizeExtension } from '../convert/formats'
+import {
+  canDecodeInBrowser,
+  isImageExtension,
+  mimeForExtension,
+  normalizeExtension,
+} from '../convert/formats'
 import { probeImageSize } from '../convert/web/image'
 import type { FileEntry, FolderEntry } from '../types'
 
@@ -40,40 +45,35 @@ export function revokeFileEntry(entry: FileEntry) {
   URL.revokeObjectURL(entry.objectUrl)
 }
 
-/** Open a hidden file input reliably across Chromium / Safari / Firefox. */
+/**
+ * Open a hidden file input.
+ * Do NOT auto-cancel on window focus — that races with directory pickers on macOS
+ * Chrome/Safari and was aborting whole-folder selection before change fired.
+ */
 function openFileInput(configure: (input: HTMLInputElement) => void): Promise<File[]> {
   return new Promise((resolve) => {
     const input = document.createElement('input')
     input.type = 'file'
-    input.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;pointer-events:none;'
+    input.style.cssText =
+      'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none;z-index:0;'
     configure(input)
 
     let settled = false
     const finish = (files: File[]) => {
       if (settled) return
       settled = true
-      cleanup()
-      resolve(files)
-    }
-    const cleanup = () => {
       input.removeEventListener('change', onChange)
       input.removeEventListener('cancel', onCancel)
-      window.removeEventListener('focus', onFocus)
       input.remove()
+      resolve(files)
     }
     const onChange = () => finish(Array.from(input.files ?? []))
     const onCancel = () => finish([])
-    // Some browsers never fire cancel — treat return-to-window with empty as cancel.
-    const onFocus = () => {
-      window.setTimeout(() => {
-        if (!settled && (!input.files || input.files.length === 0)) finish([])
-      }, 500)
-    }
 
     input.addEventListener('change', onChange)
     input.addEventListener('cancel', onCancel)
     document.body.appendChild(input)
-    window.addEventListener('focus', onFocus)
+    // Synchronous click — must stay inside the user-gesture stack.
     input.click()
   })
 }
@@ -128,6 +128,7 @@ async function pickFolderViaDirectoryPicker(): Promise<PickedFolder | null> {
 /**
  * Pick an entire folder.
  * Prefer File System Access API; fall back to webkitdirectory input.
+ * Call this directly from a click handler (same turn) so the gesture is valid.
  */
 export async function pickFolder(): Promise<PickedFolder | null> {
   const w = window as Window & {
@@ -136,17 +137,21 @@ export async function pickFolder(): Promise<PickedFolder | null> {
 
   if (typeof w.showDirectoryPicker === 'function') {
     try {
-      return await pickFolderViaDirectoryPicker()
+      const picked = await pickFolderViaDirectoryPicker()
+      // Empty directory is still a successful pick.
+      if (picked) return picked
     } catch (err) {
       // User cancelled the native directory picker.
       if (err instanceof DOMException && err.name === 'AbortError') return null
       // API present but failed — fall through to <input webkitdirectory>.
+      console.warn('showDirectoryPicker failed, falling back to webkitdirectory', err)
     }
   }
 
   try {
     return await pickFolderViaInput()
-  } catch {
+  } catch (err) {
+    console.warn('webkitdirectory folder pick failed', err)
     return null
   }
 }
@@ -175,6 +180,14 @@ export interface BuiltFolderGraph {
   nestedFolders: FolderEntry[]
 }
 
+/** Keep convertible / image-like files; skip junk (.DS_Store, txt, etc.). */
+export function isFolderMediaFile(name: string): boolean {
+  const ext = normalizeExtension(name)
+  if (!ext) return false
+  if (ext === 'pdf') return true
+  return isImageExtension(ext) || canDecodeInBrowser(ext)
+}
+
 /** Build one top-level folder node + flat list of file entries from relative paths. */
 export async function buildFolderFromFiles(
   folderName: string,
@@ -194,6 +207,8 @@ export async function buildFolderFromFiles(
   folderByPath.set(folderName, root)
 
   for (const item of items) {
+    if (!isFolderMediaFile(item.file.name)) continue
+
     const parts = item.relativePath.split('/').filter(Boolean)
     // Drop leading folder name if present
     const rel = parts[0] === folderName ? parts.slice(1) : parts
@@ -239,20 +254,36 @@ export function downloadBlob(blob: Blob, filename: string) {
   const a = document.createElement('a')
   a.href = url
   a.download = filename
+  a.rel = 'noopener'
+  a.style.display = 'none'
+  document.body.appendChild(a)
   a.click()
-  URL.revokeObjectURL(url)
+  a.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 1500)
 }
 
 export async function zipFiles(
   files: { name: string; blob: Blob }[],
   zipName: string,
-): Promise<void> {
+): Promise<Blob> {
   const zip = new JSZip()
   for (const f of files) {
     zip.file(f.name, f.blob)
   }
   const blob = await zip.generateAsync({ type: 'blob' })
   downloadBlob(blob, zipName.endsWith('.zip') ? zipName : `${zipName}.zip`)
+  return blob
+}
+
+/** Build a zip Blob without triggering download (for tests). */
+export async function buildZipBlob(
+  files: { name: string; blob: Blob }[],
+): Promise<Blob> {
+  const zip = new JSZip()
+  for (const f of files) {
+    zip.file(f.name, f.blob)
+  }
+  return zip.generateAsync({ type: 'blob' })
 }
 
 export async function readDroppedItems(
