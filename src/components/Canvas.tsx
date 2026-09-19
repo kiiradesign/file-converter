@@ -64,7 +64,10 @@ function CanvasInner() {
   const onDoubleClick = useCallback(
     async (e: React.MouseEvent) => {
       const target = e.target as HTMLElement
-      if (!target.classList.contains('react-flow__pane')) return
+      // Background dots/SVG sit inside the pane; require pane but allow nested hits.
+      if (!target.closest?.('.react-flow__pane')) return
+      if (target.closest?.('.react-flow__node') || target.closest?.('.react-flow__edge')) return
+      e.preventDefault()
       const pos = screenToFlowPosition({ x: e.clientX, y: e.clientY })
       if (e.shiftKey || e.altKey) {
         await openFolderPicker(pos)
@@ -123,6 +126,7 @@ function CanvasInner() {
         panOnScroll
         zoomOnScroll
         zoomOnPinch
+        zoomOnDoubleClick={false}
         panOnDrag
         selectionOnDrag={false}
         nodesDraggable
