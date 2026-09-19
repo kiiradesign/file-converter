@@ -2,13 +2,17 @@ import { useEffect, useRef } from 'react'
 
 interface Props {
   src: string | null
+  width: number
+  height: number
   progress: number
   active: boolean
 }
 
 /** Pixelation dissolve: coarse pixels refining into the thumbnail. */
-export function PixelationPreview({ src, progress, active }: Props) {
+export function PixelationPreview({ src, width, height, progress, active }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const canvasW = Math.max(1, Math.round(width * 2))
+  const canvasH = Math.max(1, Math.round(height * 2))
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -54,11 +58,7 @@ export function PixelationPreview({ src, progress, active }: Props) {
       cancelled = true
       cancelAnimationFrame(raf)
     }
-  }, [src, progress, active])
-
-  if (!src && active) {
-    return <div style={{ width: '100%', height: '100%', background: 'var(--fc-preview)' }} />
-  }
+  }, [src, progress, active, canvasW, canvasH])
 
   if (!src) {
     return <div style={{ width: '100%', height: '100%', background: 'var(--fc-preview)' }} />
@@ -68,5 +68,5 @@ export function PixelationPreview({ src, progress, active }: Props) {
     return <img src={src} alt="" draggable={false} />
   }
 
-  return <canvas ref={canvasRef} width={336} height={420} />
+  return <canvas ref={canvasRef} width={canvasW} height={canvasH} />
 }
