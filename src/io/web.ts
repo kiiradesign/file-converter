@@ -20,7 +20,10 @@ export async function createFileEntry(file: File, id = uid('file')): Promise<Fil
     size: file.size,
   }
 
-  if (file.type.startsWith('image/') || ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'].includes(extension)) {
+  if (
+    file.type.startsWith('image/') ||
+    ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'avif'].includes(extension)
+  ) {
     try {
       const size = await probeImageSize(objectUrl)
       entry.width = size.width
@@ -37,58 +40,115 @@ export function revokeFileEntry(entry: FileEntry) {
   URL.revokeObjectURL(entry.objectUrl)
 }
 
-export async function pickFiles(): Promise<File[]> {
+/** Open a hidden file input reliably across Chromium / Safari / Firefox. */
+function openFileInput(configure: (input: HTMLInputElement) => void): Promise<File[]> {
   return new Promise((resolve) => {
     const input = document.createElement('input')
     input.type = 'file'
-    input.multiple = true
-    input.accept = 'image/*,.png,.jpg,.jpeg,.webp,.gif,.bmp'
-    input.onchange = () => resolve(Array.from(input.files ?? []))
+    input.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;pointer-events:none;'
+    configure(input)
+
+    let settled = false
+    const finish = (files: File[]) => {
+      if (settled) return
+      settled = true
+      cleanup()
+      resolve(files)
+    }
+    const cleanup = () => {
+      input.removeEventListener('change', onChange)
+      input.removeEventListener('cancel', onCancel)
+      window.removeEventListener('focus', onFocus)
+      input.remove()
+    }
+    const onChange = () => finish(Array.from(input.files ?? []))
+    const onCancel = () => finish([])
+    // Some browsers never fire cancel — treat return-to-window with empty as cancel.
+    const onFocus = () => {
+      window.setTimeout(() => {
+        if (!settled && (!input.files || input.files.length === 0)) finish([])
+      }, 500)
+    }
+
+    input.addEventListener('change', onChange)
+    input.addEventListener('cancel', onCancel)
+    document.body.appendChild(input)
+    window.addEventListener('focus', onFocus)
     input.click()
   })
 }
 
-export async function pickFolder(): Promise<{
+export async function pickFiles(): Promise<File[]> {
+  return openFileInput((input) => {
+    input.multiple = true
+    input.accept = 'image/*,.png,.jpg,.jpeg,.webp,.gif,.bmp,.avif,.pdf'
+  })
+}
+
+export type PickedFolder = {
   folderName: string
   files: { file: File; relativePath: string }[]
-} | null> {
-  // Prefer File System Access API when available
+}
+
+async function pickFolderViaInput(): Promise<PickedFolder | null> {
+  const list = await openFileInput((input) => {
+    input.multiple = true
+    // Chromium + Safari + Firefox directory selection
+    input.setAttribute('webkitdirectory', '')
+    input.setAttribute('directory', '')
+    ;(input as HTMLInputElement & { webkitdirectory: boolean }).webkitdirectory = true
+    // Do not set accept — it can block directory mode in some browsers.
+  })
+  if (list.length === 0) return null
+
+  const files = list.map((file) => ({
+    file,
+    relativePath:
+      (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name,
+  }))
+  const top = files[0].relativePath.split('/').filter(Boolean)[0] || 'Folder'
+  return { folderName: top, files }
+}
+
+async function pickFolderViaDirectoryPicker(): Promise<PickedFolder | null> {
+  const w = window as Window & {
+    showDirectoryPicker?: (opts?: {
+      id?: string
+      mode?: 'read' | 'readwrite'
+    }) => Promise<FileSystemDirectoryHandle>
+  }
+  if (typeof w.showDirectoryPicker !== 'function') return null
+
+  const dir = await w.showDirectoryPicker({ mode: 'read' })
+  const files: { file: File; relativePath: string }[] = []
+  await walkDirectory(dir, dir.name, files)
+  return { folderName: dir.name, files }
+}
+
+/**
+ * Pick an entire folder.
+ * Prefer File System Access API; fall back to webkitdirectory input.
+ */
+export async function pickFolder(): Promise<PickedFolder | null> {
   const w = window as Window & {
     showDirectoryPicker?: () => Promise<FileSystemDirectoryHandle>
   }
 
   if (typeof w.showDirectoryPicker === 'function') {
     try {
-      const dir = await w.showDirectoryPicker()
-      const files: { file: File; relativePath: string }[] = []
-      await walkDirectory(dir, dir.name, files)
-      return { folderName: dir.name, files }
-    } catch {
-      // user cancelled or denied
-      return null
+      return await pickFolderViaDirectoryPicker()
+    } catch (err) {
+      // User cancelled the native directory picker.
+      if (err instanceof DOMException && err.name === 'AbortError') return null
+      // API present but failed — fall through to <input webkitdirectory>.
     }
   }
 
-  return new Promise((resolve) => {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.multiple = true
-    ;(input as HTMLInputElement & { webkitdirectory: boolean }).webkitdirectory = true
-    input.onchange = () => {
-      const list = Array.from(input.files ?? [])
-      if (list.length === 0) {
-        resolve(null)
-        return
-      }
-      const files = list.map((file) => ({
-        file,
-        relativePath: (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name,
-      }))
-      const top = files[0].relativePath.split('/')[0] || 'Folder'
-      resolve({ folderName: top, files })
-    }
-    input.click()
-  })
+  try {
+    return await pickFolderViaInput()
+  } catch {
+    return null
+  }
 }
 
 async function walkDirectory(
@@ -213,22 +273,40 @@ export async function readDroppedItems(
       .map((i) => i.webkitGetAsEntry())
       .filter((e): e is FileSystemEntry => !!e)
 
-    for (const entry of entries) {
-      if (entry.isFile) {
-        const file = await entryToFile(entry as FileSystemFileEntry)
-        files.push(file)
-      } else if (entry.isDirectory) {
-        const collected: { file: File; relativePath: string }[] = []
-        await readDirEntry(entry as FileSystemDirectoryEntry, entry.name, collected)
-        folders.push({ folderName: entry.name, files: collected })
+    if (entries.length > 0) {
+      for (const entry of entries) {
+        if (entry.isFile) {
+          const file = await entryToFile(entry as FileSystemFileEntry)
+          files.push(file)
+        } else if (entry.isDirectory) {
+          const collected: { file: File; relativePath: string }[] = []
+          await readDirEntry(entry as FileSystemDirectoryEntry, entry.name, collected)
+          folders.push({ folderName: entry.name, files: collected })
+        }
       }
+      return { files, folders }
     }
-    return { files, folders }
   }
 
-  for (const file of Array.from(dataTransfer.files ?? [])) {
-    files.push(file)
+  // Fallback: group files that carry webkitRelativePath (folder drop without entries API).
+  const raw = Array.from(dataTransfer.files ?? [])
+  const byRoot = new Map<string, { file: File; relativePath: string }[]>()
+  const loose: File[] = []
+  for (const file of raw) {
+    const rel = (file as File & { webkitRelativePath?: string }).webkitRelativePath || ''
+    if (rel.includes('/')) {
+      const root = rel.split('/')[0]!
+      const list = byRoot.get(root) ?? []
+      list.push({ file, relativePath: rel })
+      byRoot.set(root, list)
+    } else {
+      loose.push(file)
+    }
   }
+  for (const [folderName, group] of byRoot) {
+    folders.push({ folderName, files: group })
+  }
+  files.push(...loose)
   return { files, folders }
 }
 
@@ -247,20 +325,24 @@ function readDirEntry(
     const reader = dir.createReader()
     const readBatch = () => {
       reader.readEntries(async (batch) => {
-        if (batch.length === 0) {
-          resolve()
-          return
-        }
-        for (const entry of batch) {
-          const path = `${prefix}/${entry.name}`
-          if (entry.isFile) {
-            const file = await entryToFile(entry as FileSystemFileEntry)
-            out.push({ file, relativePath: path })
-          } else if (entry.isDirectory) {
-            await readDirEntry(entry as FileSystemDirectoryEntry, path, out)
+        try {
+          if (batch.length === 0) {
+            resolve()
+            return
           }
+          for (const entry of batch) {
+            const path = `${prefix}/${entry.name}`
+            if (entry.isFile) {
+              const file = await entryToFile(entry as FileSystemFileEntry)
+              out.push({ file, relativePath: path })
+            } else if (entry.isDirectory) {
+              await readDirEntry(entry as FileSystemDirectoryEntry, path, out)
+            }
+          }
+          readBatch()
+        } catch (err) {
+          reject(err)
         }
-        readBatch()
       }, reject)
     }
     readBatch()

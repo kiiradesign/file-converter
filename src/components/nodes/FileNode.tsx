@@ -137,10 +137,13 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
             src={src}
             width={card.width}
             height={card.height}
+            mimeType={file?.mimeType}
             progress={data.jobProgress ?? (data.jobStatus === 'done' ? 1 : 0)}
             active={
               running ||
-              (data.isResult && (data.jobProgress ?? 0) < 1 && data.jobStatus !== 'error')
+              (data.isResult &&
+                (data.jobProgress ?? 0) < 1 &&
+                data.jobStatus !== 'error')
             }
           />
         </div>

@@ -5,13 +5,15 @@ import {
   ReactFlowProvider,
   useReactFlow,
   type OnMove,
+  type XYPosition,
 } from '@xyflow/react'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import '@xyflow/react/dist/style.css'
 import { ConversionEdge } from './edges/ConversionEdge'
 import { FileNode } from './nodes/FileNode'
 import { FolderNode } from './nodes/FolderNode'
 import { ConnectionPanel } from './ConnectionPanel'
+import { AddChooser } from './AddChooser'
 import { useCanvasStore } from '../store/canvasStore'
 
 const nodeTypes = {
@@ -21,6 +23,11 @@ const nodeTypes = {
 
 const edgeTypes = {
   conversion: ConversionEdge,
+}
+
+type PendingAdd = {
+  flow: XYPosition
+  screen: { left: number; top: number }
 }
 
 function CanvasInner() {
@@ -40,6 +47,7 @@ function CanvasInner() {
 
   const { screenToFlowPosition } = useReactFlow()
   const wrapperRef = useRef<HTMLDivElement>(null)
+  const [pendingAdd, setPendingAdd] = useState<PendingAdd | null>(null)
 
   /**
    * FigJam-like dots: keep roughly constant *screen* spacing/size as zoom changes.
@@ -47,7 +55,6 @@ function CanvasInner() {
    */
   const dotPattern = useMemo(() => {
     const z = Math.max(0.2, Math.min(3, zoom))
-    // Step zoom slightly so the pattern doesn’t thrash every frame.
     const stepped = Math.round(z * 24) / 24
     const screenGap = 28
     const screenSize = 1.5
@@ -79,20 +86,24 @@ function CanvasInner() {
   )
 
   const onDoubleClick = useCallback(
-    async (e: React.MouseEvent) => {
+    (e: React.MouseEvent) => {
       const target = e.target as HTMLElement
-      // Background dots/SVG sit inside the pane; require pane but allow nested hits.
       if (!target.closest?.('.react-flow__pane')) return
       if (target.closest?.('.react-flow__node') || target.closest?.('.react-flow__edge')) return
       e.preventDefault()
-      const pos = screenToFlowPosition({ x: e.clientX, y: e.clientY })
+      const flow = screenToFlowPosition({ x: e.clientX, y: e.clientY })
+      // Shift / Alt: jump straight to folder picker.
       if (e.shiftKey || e.altKey) {
-        await openFolderPicker(pos)
-      } else {
-        await openFilePicker(pos)
+        setPendingAdd(null)
+        void openFolderPicker(flow)
+        return
       }
+      // Otherwise show Files vs Folder chooser (folder pick is easy to miss).
+      const left = Math.min(Math.max(16, e.clientX - 120), window.innerWidth - 260)
+      const top = Math.min(Math.max(16, e.clientY - 20), window.innerHeight - 200)
+      setPendingAdd({ flow, screen: { left, top } })
     },
-    [screenToFlowPosition, openFilePicker, openFolderPicker],
+    [screenToFlowPosition, openFolderPicker],
   )
 
   const onDragOver = useCallback((e: React.DragEvent) => {
@@ -103,6 +114,7 @@ function CanvasInner() {
   const onDrop = useCallback(
     async (e: React.DragEvent) => {
       e.preventDefault()
+      setPendingAdd(null)
       const pos = screenToFlowPosition({ x: e.clientX, y: e.clientY })
       await handleDrop(e.dataTransfer, pos)
     },
@@ -111,7 +123,10 @@ function CanvasInner() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') cancelDraft()
+      if (e.key === 'Escape') {
+        setPendingAdd(null)
+        cancelDraft()
+      }
       if (e.key === 'Enter' && draft && (e.metaKey || e.ctrlKey)) {
         void confirmDraft()
       }
@@ -134,6 +149,7 @@ function CanvasInner() {
         onEdgesChange={onEdgesChange}
         onMove={onMove}
         onDoubleClick={onDoubleClick}
+        onPaneClick={() => setPendingAdd(null)}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         proOptions={{ hideAttribution: true }}
@@ -161,10 +177,31 @@ function CanvasInner() {
         />
       </ReactFlow>
 
-      {visibleNodes.length === 0 && (
+      {visibleNodes.length === 0 && !pendingAdd && (
         <div className="empty-hint">
-          <span>Double-click to add files · Drop folders anywhere · Shift-double-click for folder picker</span>
+          <span>
+            Double-click to add files or a folder · Drop a folder anywhere · Shift-double-click
+            opens folder picker
+          </span>
         </div>
+      )}
+
+      {pendingAdd && (
+        <AddChooser
+          left={pendingAdd.screen.left}
+          top={pendingAdd.screen.top}
+          onPickFiles={() => {
+            const pos = pendingAdd.flow
+            setPendingAdd(null)
+            void openFilePicker(pos)
+          }}
+          onPickFolder={() => {
+            const pos = pendingAdd.flow
+            setPendingAdd(null)
+            void openFolderPicker(pos)
+          }}
+          onCancel={() => setPendingAdd(null)}
+        />
       )}
 
       {draft && <ConnectionPanel />}
