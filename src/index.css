@@ -6,6 +6,78 @@
   font-display: swap;
 }
 
+/* Allow CSS variables to interpolate on theme change (smooth light ↔ dark). */
+@property --fc-bg {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #000000;
+}
+@property --fc-surface {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #111111;
+}
+@property --fc-surface-hover {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #1a1a1a;
+}
+@property --fc-surface-active {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #262626;
+}
+@property --fc-row {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #171717;
+}
+@property --fc-border {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #262626;
+}
+@property --fc-border-strong {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #404040;
+}
+@property --fc-text {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #ededed;
+}
+@property --fc-text-muted {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #888888;
+}
+@property --fc-text-subtle {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #666666;
+}
+@property --fc-dot {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #333333;
+}
+@property --fc-preview {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #e5e5e5;
+}
+@property --fc-wire {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #666666;
+}
+@property --fc-focus-gap {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #000000;
+}
+
 :root {
   /*
    * Vercel / Geist-adjacent dark canvas tokens.
@@ -39,6 +111,7 @@
   --ease-out-soft: cubic-bezier(0.175, 0.885, 0.32, 1.1);
   --duration-fast: 140ms;
   --duration-hover: 160ms;
+  --duration-theme: 260ms;
   color-scheme: dark;
 }
 
@@ -96,6 +169,82 @@ body,
   font-family: 'Geist', ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition:
+    background-color var(--duration-theme) var(--ease-out),
+    color var(--duration-theme) var(--ease-out);
+}
+
+.app-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: var(--fc-bg);
+  color: var(--fc-text);
+  transition:
+    background-color var(--duration-theme) var(--ease-out),
+    color var(--duration-theme) var(--ease-out);
+}
+
+/* Surfaces that read theme tokens — color props only, not layout. */
+.add-chooser,
+.connection-panel,
+.breadcrumb,
+.file-node__card,
+.file-node__toolbar,
+.file-node__label,
+.folder-node__label,
+.chrome-title h1,
+.chrome-title p,
+.chrome-credit,
+.size-hint {
+  transition:
+    background-color var(--duration-theme) var(--ease-out),
+    border-color var(--duration-theme) var(--ease-out),
+    color var(--duration-theme) var(--ease-out),
+    fill var(--duration-theme) var(--ease-out),
+    stroke var(--duration-theme) var(--ease-out);
+}
+
+/* React Flow canvas / dots pick up interpolated --fc-bg / --fc-dot. */
+.react-flow,
+.react-flow__viewport,
+.react-flow__renderer,
+.react-flow__background,
+.react-flow__background pattern circle,
+.react-flow__background rect {
+  transition:
+    fill var(--duration-theme) var(--ease-out),
+    stroke var(--duration-theme) var(--ease-out),
+    background-color var(--duration-theme) var(--ease-out),
+    color var(--duration-theme) var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html,
+  body,
+  #root,
+  .app-shell,
+  .add-chooser,
+  .connection-panel,
+  .breadcrumb,
+  .file-node__card,
+  .file-node__toolbar,
+  .file-node__label,
+  .folder-node__label,
+  .chrome-title h1,
+  .chrome-title p,
+  .chrome-credit,
+  .chrome-theme,
+  .chrome-theme__icon,
+  .size-hint,
+  .react-flow,
+  .react-flow__viewport,
+  .react-flow__renderer,
+  .react-flow__background,
+  .react-flow__background pattern circle,
+  .react-flow__background rect {
+    transition: none !important;
+  }
 }
 
 button,
@@ -110,13 +259,6 @@ button {
   border: none;
   background: none;
   padding: 0;
-}
-
-.app-shell {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  background: var(--fc-bg);
 }
 
 .chrome-title {
@@ -163,10 +305,28 @@ button {
   box-shadow: none;
   border-radius: 0;
   color: var(--fc-text-muted);
+  opacity: 0.72;
   transition:
     color var(--duration-hover) var(--ease-out),
-    transform var(--duration-fast) var(--ease-out),
-    opacity var(--duration-hover) var(--ease-out);
+    opacity var(--duration-hover) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.chrome-theme__icon {
+  grid-area: 1 / 1;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transform: scale(0.88) rotate(-12deg);
+  transition:
+    opacity var(--duration-theme) var(--ease-out),
+    transform var(--duration-theme) var(--ease-out);
+  pointer-events: none;
+}
+
+.chrome-theme__icon.is-active {
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
 }
 
 .chrome-theme:active {
@@ -176,6 +336,7 @@ button {
 @media (hover: hover) and (pointer: fine) {
   .chrome-theme:hover {
     color: var(--fc-text);
+    opacity: 1;
   }
 }
 
@@ -193,25 +354,21 @@ button {
   font-weight: 500;
   color: var(--fc-text-muted);
   text-decoration: none;
-  background-image: linear-gradient(currentColor, currentColor);
-  background-position: 0 100%;
-  background-repeat: no-repeat;
-  background-size: 0 1px;
+  opacity: 0.72;
   transition:
     color var(--duration-hover) var(--ease-out),
-    background-size var(--duration-hover) var(--ease-out),
     opacity var(--duration-hover) var(--ease-out);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .chrome-credit:hover {
     color: var(--fc-text);
-    background-size: 100% 1px;
+    opacity: 1;
   }
 }
 
 .chrome-credit:active {
-  opacity: 0.72;
+  opacity: 0.55;
 }
 
 .breadcrumb {

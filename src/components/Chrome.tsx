@@ -18,7 +18,12 @@ export function Chrome() {
         aria-label="Toggle theme"
         onClick={toggleTheme}
       >
-        {theme === 'dark' ? <Sun size={18} strokeWidth={1.75} /> : <Moon size={18} strokeWidth={1.75} />}
+        <span className={`chrome-theme__icon${theme === 'dark' ? ' is-active' : ''}`} aria-hidden={theme !== 'dark'}>
+          <Sun size={18} strokeWidth={1.75} />
+        </span>
+        <span className={`chrome-theme__icon${theme === 'light' ? ' is-active' : ''}`} aria-hidden={theme !== 'light'}>
+          <Moon size={18} strokeWidth={1.75} />
+        </span>
       </button>
 
       <a
