@@ -1,5 +1,5 @@
 import { DialRoot, useDialKit } from 'dialkit'
-import { useReactFlow, type Node } from '@xyflow/react'
+import { useReactFlow, useStore, useViewport, type Node } from '@xyflow/react'
 import { ArrowLeft } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { compatibleTargets, formatLabel, WEB_ENCODE_FORMATS } from '../convert/formats'
@@ -45,6 +45,8 @@ function DialSliders({ draftKey }: { draftKey: string }) {
 const PANEL_W = 280
 const PANEL_H_EST = 260
 const PANEL_MARGIN = 16
+/** Screen-space breath between node top-right and panel. */
+const PANEL_NODE_GAP = 10
 
 function clampPanelPosition(left: number, top: number) {
   const maxLeft = Math.max(PANEL_MARGIN, window.innerWidth - PANEL_W - PANEL_MARGIN)
@@ -61,27 +63,32 @@ function panelPositionForNode(
 ): { left: number; top: number } {
   const measured = (source as Node).measured
   const w = measured?.width ?? (source.data.kind === 'folder' ? 120 : 180)
-  const h = measured?.height ?? (source.data.kind === 'folder' ? 120 : 240)
 
-  // Sit just past the + handle — close to the node without covering it.
-  const screen = flowToScreenPosition({
-    x: source.position.x + w + 6,
-    y: source.position.y + h * 0.4,
+  // Anchor to the node's top-right corner in flow space → screen.
+  const topRight = flowToScreenPosition({
+    x: source.position.x + w,
+    y: source.position.y,
   })
-  return clampPanelPosition(screen.x + 4, screen.y - 36)
+  return clampPanelPosition(topRight.x + PANEL_NODE_GAP, topRight.y)
 }
 
 export function ConnectionPanel() {
   const { flowToScreenPosition } = useReactFlow()
+  const viewport = useViewport()
   const draft = useCanvasStore((s) => s.draft)
-  const nodes = useCanvasStore((s) => s.nodes)
   const files = useCanvasStore((s) => s.files)
-  const zoom = useCanvasStore((s) => s.zoom)
   const updateDraftSettings = useCanvasStore((s) => s.updateDraftSettings)
   const confirmDraft = useCanvasStore((s) => s.confirmDraft)
   const cancelDraft = useCanvasStore((s) => s.cancelDraft)
 
-  const source = draft ? nodes.find((n) => n.id === draft.sourceNodeId) : null
+  // Live RF node (position + measured) so pan/zoom/drag stay in sync.
+  const source = useStore((s) => {
+    if (!draft?.sourceNodeId) return null
+    const n =
+      s.nodeLookup.get(draft.sourceNodeId) ??
+      s.nodes.find((node) => node.id === draft.sourceNodeId)
+    return (n as AppNode | undefined) ?? null
+  })
 
   const targets = (() => {
     if (!source) return WEB_ENCODE_FORMATS
@@ -104,8 +111,19 @@ export function ConnectionPanel() {
   const position = useMemo(() => {
     if (!draft || !source) return { left: 24, top: 96 }
     return panelPositionForNode(source, flowToScreenPosition)
-    // Recompute when viewport zooms/pans (zoom updates on move) or node moves.
-  }, [draft, source, flowToScreenPosition, zoom, source?.position.x, source?.position.y])
+    // viewport x/y/zoom + node geometry — recompute on every pan/zoom/drag.
+  }, [
+    draft,
+    source,
+    flowToScreenPosition,
+    viewport.x,
+    viewport.y,
+    viewport.zoom,
+    source?.position.x,
+    source?.position.y,
+    (source as Node | null)?.measured?.width,
+    (source as Node | null)?.measured?.height,
+  ])
 
   if (!draft || !source) return null
 

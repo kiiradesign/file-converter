@@ -68,8 +68,8 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
     () => previewCardSize(file?.width, file?.height),
     [file?.width, file?.height],
   )
-  // Toolbar (~32px) + tight bridge gap (~8px), counter-scaled.
-  const toolbarSpace = Math.ceil(40 * Math.min(counter, 2.5))
+  // ~36–40px toolbar + ~10–12px breath above the card (bridge padding is hit-area only).
+  const toolbarSpace = Math.ceil(52 * Math.min(counter, 2.5))
 
   const onPlus = useCallback(
     (e: React.MouseEvent) => {
