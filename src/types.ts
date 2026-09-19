@@ -47,7 +47,7 @@ export interface ConversionJob {
 
 export const DEFAULT_SETTINGS: ConvertSettings = {
   format: 'webp',
-  quality: 80,
+  quality: 100,
   resolution: 100,
   maxBytes: null,
 }

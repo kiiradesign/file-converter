@@ -1,42 +1,37 @@
 import { DialRoot, useDialKit } from 'dialkit'
-import { useEffect, useRef } from 'react'
-import { compatibleTargets, WEB_ENCODE_FORMATS } from '../convert/formats'
+import { ArrowLeft } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { compatibleTargets, formatLabel, WEB_ENCODE_FORMATS } from '../convert/formats'
 import { useCanvasStore } from '../store/canvasStore'
 import type { ConvertFormat } from '../types'
 import 'dialkit/styles.css'
 
-function DialSliders() {
+function DialSliders({ draftKey }: { draftKey: string }) {
   const updateDraftSettings = useCanvasStore((s) => s.updateDraftSettings)
   const draft = useCanvasStore((s) => s.draft)
-  const last = useRef({ q: -1, r: -1, b: -1 })
+  const last = useRef({ q: -1, r: -1 })
 
+  // TODO: File size slider (dynamic cap + lock quality/resolution) — stubbed/hidden for now.
   const values = useDialKit(
     'Convert',
     {
-      Quality: [draft?.settings.quality ?? 80, 1, 100, 1],
+      Quality: [draft?.settings.quality ?? 100, 1, 100, 1],
       Resolution: [draft?.settings.resolution ?? 100, 10, 100, 1],
-      'File size (KB)': [
-        draft?.settings.maxBytes ? Math.round(draft.settings.maxBytes / 1024) : 0,
-        0,
-        5000,
-        10,
-      ],
     },
-    { id: 'convert-draft', persist: false, defaultCollapsed: false },
+    { id: `convert-draft-${draftKey}`, persist: false, defaultCollapsed: false },
   )
 
   useEffect(() => {
     const q = values.Quality
     const r = values.Resolution
-    const kb = values['File size (KB)']
-    if (last.current.q === q && last.current.r === r && last.current.b === kb) return
-    last.current = { q, r, b: kb }
+    if (last.current.q === q && last.current.r === r) return
+    last.current = { q, r }
     updateDraftSettings({
       quality: q,
       resolution: r,
-      maxBytes: kb > 0 ? kb * 1024 : null,
+      maxBytes: null,
     })
-  }, [values.Quality, values.Resolution, values['File size (KB)'], updateDraftSettings])
+  }, [values.Quality, values.Resolution, updateDraftSettings])
 
   return null
 }
@@ -60,6 +55,15 @@ export function ConnectionPanel() {
     return WEB_ENCODE_FORMATS
   })()
 
+  const [view, setView] = useState<'formats' | 'sliders'>(
+    draft?.mode === 'adjust' ? 'sliders' : 'formats',
+  )
+
+  useEffect(() => {
+    if (!draft) return
+    setView(draft.mode === 'adjust' ? 'sliders' : 'formats')
+  }, [draft?.sourceNodeId, draft?.mode])
+
   if (!draft || !source) return null
 
   const estimated =
@@ -67,55 +71,90 @@ export function ConnectionPanel() {
       ? estimateSize(files[source.data.fileId]?.size ?? 0, draft.settings)
       : null
 
+  const dialKey = `${draft.sourceNodeId}-${draft.mode}-${draft.settings.format}`
+
   return (
     <div
       className="connection-panel"
       style={{ top: 96, right: 24 }}
       onMouseDown={(e) => e.stopPropagation()}
     >
-      <h3>{draft.mode === 'adjust' ? 'Adjust conversion' : 'Convert'}</h3>
+      {view === 'formats' ? (
+        <>
+          <h3>Convert</h3>
+          <p className="connection-panel__hint">Choose a format</p>
+          <ul className="format-list" role="listbox" aria-label="Target formats">
+            {targets.map((t) => (
+              <li key={t}>
+                <button
+                  type="button"
+                  className={draft.settings.format === t ? 'is-active' : undefined}
+                  role="option"
+                  aria-selected={draft.settings.format === t}
+                  onClick={() => {
+                    updateDraftSettings({ format: t as ConvertFormat })
+                    setView('sliders')
+                  }}
+                >
+                  {formatLabel(t)}
+                </button>
+              </li>
+            ))}
+          </ul>
+          {targets.length === 0 && (
+            <p className="connection-panel__hint">No compatible formats for this file.</p>
+          )}
+          <div className="actions">
+            <button type="button" onClick={cancelDraft}>
+              Cancel
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="connection-panel__header">
+            {draft.mode === 'connect' && (
+              <button
+                type="button"
+                className="connection-panel__back"
+                aria-label="Back to formats"
+                onClick={() => setView('formats')}
+              >
+                <ArrowLeft size={16} strokeWidth={2} />
+              </button>
+            )}
+            <h3>
+              {draft.mode === 'adjust'
+                ? 'Adjust'
+                : `Convert · ${formatLabel(draft.settings.format)}`}
+            </h3>
+          </div>
 
-      <label htmlFor="fc-format">Format</label>
-      <select
-        id="fc-format"
-        value={draft.settings.format}
-        onChange={(e) =>
-          updateDraftSettings({ format: e.target.value as ConvertFormat })
-        }
-      >
-        {targets.map((t) => (
-          <option key={t} value={t}>
-            {t.toUpperCase()}
-          </option>
-        ))}
-      </select>
+          <div className="dial-host">
+            <DialRoot mode="inline" theme="dark" productionEnabled defaultOpen />
+            <DialSliders draftKey={dialKey} />
+          </div>
 
-      <div className="dial-host">
-        <DialRoot mode="inline" theme="dark" productionEnabled defaultOpen />
-        <DialSliders />
-      </div>
+          <div className="size-hint">
+            {estimated != null
+              ? `Est. output ~ ${formatBytes(estimated)}`
+              : 'Batch folder conversion'}
+          </div>
 
-      <div className="size-hint">
-        {estimated != null
-          ? `Est. output ~ ${formatBytes(estimated)}`
-          : 'Batch folder conversion'}
-        {draft.settings.maxBytes
-          ? ` · cap ${formatBytes(draft.settings.maxBytes)}`
-          : ''}
-      </div>
-
-      <div className="actions">
-        <button type="button" onClick={cancelDraft}>
-          Cancel
-        </button>
-        <button
-          type="button"
-          className="primary"
-          onClick={() => void confirmDraft()}
-        >
-          {draft.mode === 'adjust' ? 'Create new' : 'Convert'}
-        </button>
-      </div>
+          <div className="actions">
+            <button type="button" onClick={cancelDraft}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="primary"
+              onClick={() => void confirmDraft()}
+            >
+              {draft.mode === 'adjust' ? 'Create new' : 'Convert'}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   )
 }

@@ -121,15 +121,16 @@ function uid(prefix: string) {
   return `${prefix}_${crypto.randomUUID().slice(0, 8)}`
 }
 
+/** Display label: preserve OS filename case; only swap extension for results. */
 function fileLabel(name: string, isResult: boolean, format?: ConvertFormat): string {
-  if (isResult && format) {
-    return rewriteExtension(name, format).toUpperCase().replace(/\.([^.]+)$/, '. $1')
-  }
-  const i = name.lastIndexOf('.')
-  if (i > 0) {
-    return `${name.slice(0, i)}. ${name.slice(i + 1)}`.toUpperCase()
-  }
-  return name.toUpperCase()
+  if (isResult && format) return rewriteExtension(name, format)
+  return name
+}
+
+function formatFromExtension(ext: string): ConvertFormat {
+  const e = ext.toLowerCase() === 'jpeg' ? 'jpg' : ext.toLowerCase()
+  if (e === 'png' || e === 'jpg' || e === 'webp') return e
+  return DEFAULT_SETTINGS.format
 }
 
 export const useCanvasStore = create<CanvasState>((set, get) => ({
@@ -349,13 +350,23 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   startAdjust: (nodeId, cursorFlow) => {
     const node = get().nodes.find((n) => n.id === nodeId)
-    if (!node || node.data.kind !== 'file' || !node.data.isResult) return
-    const settings = node.data.settings ?? { ...DEFAULT_SETTINGS }
+    if (!node || node.data.kind !== 'file') return
+    const file = get().files[node.data.fileId]
+    const format = node.data.settings?.format ?? formatFromExtension(file?.extension ?? '')
+    const settings: ConvertSettings = {
+      ...DEFAULT_SETTINGS,
+      ...node.data.settings,
+      format,
+      // Adjust keeps the same type; sliders start at product defaults unless reusing prior job settings.
+      quality: node.data.settings?.quality ?? DEFAULT_SETTINGS.quality,
+      resolution: node.data.settings?.resolution ?? DEFAULT_SETTINGS.resolution,
+      maxBytes: node.data.settings?.maxBytes ?? null,
+    }
     set({
       draft: {
         sourceNodeId: nodeId,
         cursorFlow,
-        settings: { ...settings },
+        settings,
         mode: 'adjust',
         adjustFromNodeId: nodeId,
       },

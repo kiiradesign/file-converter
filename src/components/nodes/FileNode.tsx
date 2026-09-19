@@ -62,44 +62,28 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
         style={{ transform: `translateX(-50%) scale(${counter})` }}
         onMouseEnter={() => setHovered(true)}
       >
-        {data.isResult ? (
-          <>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                startAdjust(id, { x: 0, y: 0 })
-              }}
-            >
-              <Pencil size={14} strokeWidth={1.75} />
-              Adjust
-              <ChevronDown size={14} strokeWidth={1.75} />
-            </button>
-            <span className="divider" />
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                void saveNode(id)
-              }}
-            >
-              <Download size={14} strokeWidth={1.75} />
-              Save
-            </button>
-          </>
-        ) : (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              void saveNode(id)
-            }}
-            aria-label="Save"
-          >
-            <Download size={14} strokeWidth={1.75} />
-            Save
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            startAdjust(id, { x: 0, y: 0 })
+          }}
+        >
+          <Pencil size={14} strokeWidth={1.75} />
+          Adjust
+          <ChevronDown size={14} strokeWidth={1.75} />
+        </button>
+        <span className="divider" />
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            void saveNode(id)
+          }}
+        >
+          <Download size={14} strokeWidth={1.75} />
+          Save
+        </button>
       </div>
     </div>
   )

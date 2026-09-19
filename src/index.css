@@ -225,7 +225,7 @@ button {
   margin-bottom: 10px;
   font-size: 12px;
   font-weight: 500;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.01em;
   color: var(--fc-text);
   white-space: nowrap;
   transform-origin: center bottom;
@@ -397,9 +397,67 @@ button {
 }
 
 .connection-panel h3 {
-  margin: 0 0 10px;
+  margin: 0;
   font-size: 13px;
   font-weight: 600;
+}
+
+.connection-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.connection-panel__header h3 {
+  flex: 1;
+}
+
+.connection-panel__back {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: var(--fc-text);
+  flex-shrink: 0;
+}
+
+.connection-panel__back:hover {
+  background: var(--fc-surface-hover);
+}
+
+.connection-panel__hint {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--fc-text-muted);
+}
+
+.format-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.format-list button {
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--fc-text);
+  background: var(--fc-bg);
+  border: 1px solid var(--fc-border);
+}
+
+.format-list button:hover,
+.format-list button.is-active {
+  background: var(--fc-surface-hover);
+  border-color: var(--fc-text-muted);
 }
 
 .connection-panel label {
@@ -409,16 +467,6 @@ button {
   margin-bottom: 6px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-}
-
-.connection-panel select {
-  width: 100%;
-  margin-bottom: 12px;
-  background: var(--fc-bg);
-  border: 1px solid var(--fc-border);
-  border-radius: 10px;
-  padding: 8px 10px;
-  outline: none;
 }
 
 .connection-panel .size-hint {
