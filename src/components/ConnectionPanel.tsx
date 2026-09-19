@@ -48,22 +48,33 @@ const PANEL_MARGIN = 16
 const PANEL_NODE_GAP = 10
 
 /**
- * Panel top = node top; panel left = node right + gap.
- * Uses DOM rects so Y matches the painted node (any aspect), not a guessed
- * mid-height offset. Coordinates are relative to `originEl` (app-shell).
+ * Visible “node body” the user reads as the node — not the RF wrapper that
+ * reserves empty space above for the hover toolbar.
  */
-function panelPositionFromNodeEl(
-  nodeEl: Element,
+function visibleNodeBodyEl(rfNodeEl: Element): Element {
+  return (
+    rfNodeEl.querySelector('.file-node__card') ??
+    rfNodeEl.querySelector('.folder-node__glyph') ??
+    rfNodeEl.querySelector('.folder-node') ??
+    rfNodeEl
+  )
+}
+
+/**
+ * Panel top = painted card/glyph top; panel left = body right + gap.
+ * Coordinates are relative to `originEl` (app-shell / offsetParent).
+ */
+function panelPositionFromBodyEl(
+  bodyEl: Element,
   originEl: Element,
 ): { left: number; top: number } {
-  const nodeRect = nodeEl.getBoundingClientRect()
+  const bodyRect = bodyEl.getBoundingClientRect()
   const originRect = originEl.getBoundingClientRect()
-  const left = nodeRect.right - originRect.left + PANEL_NODE_GAP
-  const top = nodeRect.top - originRect.top
+  const left = bodyRect.right - originRect.left + PANEL_NODE_GAP
+  const top = bodyRect.top - originRect.top
   const maxLeft = Math.max(PANEL_MARGIN, originRect.width - PANEL_W - PANEL_MARGIN)
   return {
-    // Keep top locked to the node — only clamp horizontally so the panel
-    // stays on-screen without drifting its Y relative to the node.
+    // Keep top locked to the body — only clamp horizontally.
     left: Math.min(Math.max(PANEL_MARGIN, left), maxLeft),
     top,
   }
@@ -106,26 +117,30 @@ export function ConnectionPanel() {
     setView(draft.mode === 'adjust' ? 'sliders' : 'formats')
   }, [draft?.sourceNodeId, draft?.mode])
 
-  // Recompute from the painted node box on every viewport / geometry change.
+  // Recompute from the painted card/glyph on every viewport / geometry change.
   useLayoutEffect(() => {
     if (!draft?.sourceNodeId || !source) return
 
     const update = () => {
-      const nodeEl = document.querySelector(
+      const rfNodeEl = document.querySelector(
         `.react-flow__node[data-id="${draft.sourceNodeId}"]`,
       )
       const originEl =
         panelRef.current?.offsetParent instanceof Element
           ? panelRef.current.offsetParent
           : document.querySelector('.app-shell')
-      if (!nodeEl || !originEl) return
-      setPosition(panelPositionFromNodeEl(nodeEl, originEl))
+      if (!rfNodeEl || !originEl) return
+      const bodyEl = visibleNodeBodyEl(rfNodeEl)
+      setPosition(panelPositionFromBodyEl(bodyEl, originEl))
     }
 
     update()
-    // One more frame after measure/layout settles (aspect-varying file cards).
-    const raf = requestAnimationFrame(update)
-    return () => cancelAnimationFrame(raf)
+    // After layout/measure (aspect-varying cards) and one more paint.
+    const raf1 = requestAnimationFrame(() => {
+      update()
+      requestAnimationFrame(update)
+    })
+    return () => cancelAnimationFrame(raf1)
   }, [
     draft?.sourceNodeId,
     source,
