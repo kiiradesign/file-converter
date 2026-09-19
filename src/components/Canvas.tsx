@@ -31,6 +31,7 @@ function CanvasInner() {
   const onNodesChange = useCanvasStore((s) => s.onNodesChange)
   const onEdgesChange = useCanvasStore((s) => s.onEdgesChange)
   const setZoom = useCanvasStore((s) => s.setZoom)
+  const zoom = useCanvasStore((s) => s.zoom)
   const openFilePicker = useCanvasStore((s) => s.openFilePicker)
   const openFolderPicker = useCanvasStore((s) => s.openFolderPicker)
   const handleDrop = useCanvasStore((s) => s.handleDrop)
@@ -39,6 +40,22 @@ function CanvasInner() {
 
   const { screenToFlowPosition } = useReactFlow()
   const wrapperRef = useRef<HTMLDivElement>(null)
+
+  /**
+   * FigJam-like dots: keep roughly constant *screen* spacing/size as zoom changes.
+   * React Flow gap/size are in flow units (scaled by zoom), so invert zoom.
+   */
+  const dotPattern = useMemo(() => {
+    const z = Math.max(0.2, Math.min(3, zoom))
+    // Step zoom slightly so the pattern doesn’t thrash every frame.
+    const stepped = Math.round(z * 24) / 24
+    const screenGap = 28
+    const screenSize = 1.5
+    return {
+      gap: Math.max(10, Math.round(screenGap / stepped)),
+      size: Math.min(7, Math.max(0.9, Number((screenSize / stepped).toFixed(2)))),
+    }
+  }, [zoom])
 
   const current = folderStack.length ? folderStack[folderStack.length - 1] : null
   const visibleNodes = useMemo(
@@ -137,8 +154,8 @@ function CanvasInner() {
         <Background
           id="dots"
           variant={BackgroundVariant.Dots}
-          gap={28}
-          size={1.25}
+          gap={dotPattern.gap}
+          size={dotPattern.size}
           color="var(--fc-dot)"
           bgColor="var(--fc-bg)"
         />
