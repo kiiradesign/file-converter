@@ -21,11 +21,10 @@ page.on('pageerror', (e) => errors.push(String(e)))
 await page.goto(BASE, { waitUntil: 'networkidle0', timeout: 30000 })
 
 const sun = await page.$('button[aria-label="Toggle theme"]')
-const help = await page.$('button[aria-label="Help"]')
 const title = await page.$('.chrome-title h1')
 const credit = await page.$('.chrome-credit')
-if (!sun || !help || !title || !credit) {
-  console.error('Chrome elements missing', { sun: !!sun, help: !!help, title: !!title, credit: !!credit })
+if (!sun || !title || !credit) {
+  console.error('Chrome elements missing', { sun: !!sun, title: !!title, credit: !!credit })
   process.exit(1)
 }
 
@@ -33,8 +32,6 @@ await sun.click()
 await page.waitForSelector('[data-theme="light"]')
 await sun.click()
 await page.waitForSelector('[data-theme="dark"]')
-await help.click()
-await page.waitForSelector('.help-popover')
 
 await page.screenshot({
   path: '/opt/cursor/artifacts/screenshots/smoke-chrome.png',

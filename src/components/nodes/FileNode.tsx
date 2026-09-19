@@ -52,6 +52,7 @@ export function previewCardSize(
 function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
   const { zoom } = useViewport()
   const file = useCanvasStore((s) => s.files[data.fileId])
+  const draftOpen = useCanvasStore((s) => s.draft != null)
   const startConnect = useCanvasStore((s) => s.startConnect)
   const startAdjust = useCanvasStore((s) => s.startAdjust)
   const saveNode = useCanvasStore((s) => s.saveNode)
@@ -60,6 +61,7 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
   const counter = 1 / Math.max(zoom, 0.01)
   const running = data.jobStatus === 'running'
   const src = file?.objectUrl || null
+  const showHoverChrome = hovered && !draftOpen
 
   const card = useMemo(
     () => previewCardSize(file?.width, file?.height),
@@ -72,9 +74,10 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
     (e: React.MouseEvent) => {
       e.stopPropagation()
       e.preventDefault()
+      if (draftOpen) return
       startConnect(id, { x: 0, y: 0 })
     },
-    [id, startConnect],
+    [id, startConnect, draftOpen],
   )
 
   const stopDrag = useCallback((e: React.SyntheticEvent) => {
@@ -83,50 +86,54 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
 
   return (
     <div
-      className={`file-node${hovered ? ' is-hovered' : ''}`}
+      className={`file-node${showHoverChrome ? ' is-hovered' : ''}`}
       style={{ width: card.width, paddingTop: toolbarSpace }}
-      onMouseEnter={() => setHovered(true)}
+      onMouseEnter={() => {
+        if (!draftOpen) setHovered(true)
+      }}
       onMouseLeave={() => setHovered(false)}
     >
-      <div
-        className="file-node__toolbar-bridge nodrag nopan"
-        style={{ transform: `translateX(-50%) scale(${counter})` }}
-        onMouseEnter={() => setHovered(true)}
-        onPointerDown={stopDrag}
-      >
-        <div className="file-node__toolbar">
-          <button
-            type="button"
-            className="nodrag nopan"
-            onPointerDown={stopDrag}
-            onMouseDown={stopDrag}
-            onClick={(e) => {
-              e.stopPropagation()
-              e.preventDefault()
-              startAdjust(id, { x: 0, y: 0 })
-            }}
-          >
-            <Pencil size={14} strokeWidth={1.75} />
-            Compress
-            <ChevronDown size={14} strokeWidth={1.75} />
-          </button>
-          <span className="divider" aria-hidden />
-          <button
-            type="button"
-            className="nodrag nopan"
-            onPointerDown={stopDrag}
-            onMouseDown={stopDrag}
-            onClick={(e) => {
-              e.stopPropagation()
-              e.preventDefault()
-              void saveNode(id)
-            }}
-          >
-            <Download size={14} strokeWidth={1.75} />
-            Save
-          </button>
+      {!draftOpen && (
+        <div
+          className="file-node__toolbar-bridge nodrag nopan"
+          style={{ transform: `translateX(-50%) scale(${counter})` }}
+          onMouseEnter={() => setHovered(true)}
+          onPointerDown={stopDrag}
+        >
+          <div className="file-node__toolbar">
+            <button
+              type="button"
+              className="nodrag nopan"
+              onPointerDown={stopDrag}
+              onMouseDown={stopDrag}
+              onClick={(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+                startAdjust(id, { x: 0, y: 0 })
+              }}
+            >
+              <Pencil size={14} strokeWidth={1.75} />
+              Compress
+              <ChevronDown size={14} strokeWidth={1.75} />
+            </button>
+            <span className="divider" aria-hidden />
+            <button
+              type="button"
+              className="nodrag nopan"
+              onPointerDown={stopDrag}
+              onMouseDown={stopDrag}
+              onClick={(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+                void saveNode(id)
+              }}
+            >
+              <Download size={14} strokeWidth={1.75} />
+              Save
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       <div
         className="file-node__card"
@@ -149,17 +156,19 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
         </div>
         <Handle type="target" position={Position.Left} id="in" />
         <Handle type="source" position={Position.Right} id="out" />
-        <button
-          type="button"
-          className="file-node__plus nodrag nopan"
-          style={{ transform: `translateY(-50%) scale(${counter})` }}
-          aria-label="Start conversion"
-          onMouseDown={onPlus}
-          onClick={onPlus}
-          onPointerDown={stopDrag}
-        >
-          <Plus size={16} strokeWidth={2.25} />
-        </button>
+        {!draftOpen && (
+          <button
+            type="button"
+            className="file-node__plus nodrag nopan"
+            style={{ transform: `translateY(-50%) scale(${counter})` }}
+            aria-label="Start conversion"
+            onMouseDown={onPlus}
+            onClick={onPlus}
+            onPointerDown={stopDrag}
+          >
+            <Plus size={16} strokeWidth={2.25} />
+          </button>
+        )}
       </div>
 
       <div

@@ -25,7 +25,7 @@ const edgeTypes = {
   conversion: ConversionEdge,
 }
 
-type PendingAdd = {
+type FloatingAdd = {
   flow: XYPosition
   screen: { left: number; top: number }
 }
@@ -39,20 +39,21 @@ function CanvasInner() {
   const onEdgesChange = useCanvasStore((s) => s.onEdgesChange)
   const setZoom = useCanvasStore((s) => s.setZoom)
   const zoom = useCanvasStore((s) => s.zoom)
-  const openFilePicker = useCanvasStore((s) => s.openFilePicker)
-  const openFolderPicker = useCanvasStore((s) => s.openFolderPicker)
+  const addFilesAt = useCanvasStore((s) => s.addFilesAt)
+  const addFolderAt = useCanvasStore((s) => s.addFolderAt)
   const handleDrop = useCanvasStore((s) => s.handleDrop)
   const confirmDraft = useCanvasStore((s) => s.confirmDraft)
   const cancelDraft = useCanvasStore((s) => s.cancelDraft)
 
   const { screenToFlowPosition } = useReactFlow()
   const wrapperRef = useRef<HTMLDivElement>(null)
-  const [pendingAdd, setPendingAdd] = useState<PendingAdd | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const folderInputRef = useRef<HTMLInputElement>(null)
+  /** Flow position for the in-flight file/folder input pick. */
+  const pickPosRef = useRef<XYPosition>({ x: 200, y: 160 })
+  /** Floating double-click chooser only (dismissible). Empty-state is separate. */
+  const [floatingAdd, setFloatingAdd] = useState<FloatingAdd | null>(null)
 
-  /**
-   * FigJam-like dots: keep roughly constant *screen* spacing/size as zoom changes.
-   * React Flow gap/size are in flow units (scaled by zoom), so invert zoom.
-   */
   const dotPattern = useMemo(() => {
     const z = Math.max(0.2, Math.min(3, zoom))
     const stepped = Math.round(z * 24) / 24
@@ -78,12 +79,42 @@ function CanvasInner() {
     [edges, visibleIds],
   )
 
+  const canvasEmpty = visibleNodes.length === 0
+
   const onMove: OnMove = useCallback(
     (_evt, viewport) => {
       setZoom(viewport.zoom)
     },
     [setZoom],
   )
+
+  /** Center of the current viewport in flow coords (for empty-state picks). */
+  const viewportCenterFlow = useCallback((): XYPosition => {
+    const el = wrapperRef.current
+    const w = el?.clientWidth ?? window.innerWidth
+    const h = el?.clientHeight ?? window.innerHeight
+    return screenToFlowPosition({ x: w / 2, y: h / 2 })
+  }, [screenToFlowPosition])
+
+  /** Click a DOM-resident input in the same user-gesture turn (no await). */
+  const openFilesDialog = useCallback((flow: XYPosition) => {
+    pickPosRef.current = flow
+    fileInputRef.current?.click()
+  }, [])
+
+  const openFolderDialog = useCallback((flow: XYPosition) => {
+    pickPosRef.current = flow
+    folderInputRef.current?.click()
+  }, [])
+
+  // Ensure webkitdirectory is set as a property (attribute alone is flaky in React).
+  useEffect(() => {
+    const input = folderInputRef.current
+    if (!input) return
+    input.setAttribute('webkitdirectory', '')
+    input.setAttribute('directory', '')
+    ;(input as HTMLInputElement & { webkitdirectory: boolean }).webkitdirectory = true
+  }, [])
 
   const onDoubleClick = useCallback(
     (e: React.MouseEvent) => {
@@ -92,18 +123,16 @@ function CanvasInner() {
       if (target.closest?.('.react-flow__node') || target.closest?.('.react-flow__edge')) return
       e.preventDefault()
       const flow = screenToFlowPosition({ x: e.clientX, y: e.clientY })
-      // Shift / Alt: jump straight to folder picker.
       if (e.shiftKey || e.altKey) {
-        setPendingAdd(null)
-        void openFolderPicker(flow)
+        setFloatingAdd(null)
+        openFolderDialog(flow)
         return
       }
-      // Otherwise show Files vs Folder chooser (folder pick is easy to miss).
       const left = Math.min(Math.max(16, e.clientX - 120), window.innerWidth - 260)
       const top = Math.min(Math.max(16, e.clientY - 20), window.innerHeight - 200)
-      setPendingAdd({ flow, screen: { left, top } })
+      setFloatingAdd({ flow, screen: { left, top } })
     },
-    [screenToFlowPosition, openFolderPicker],
+    [screenToFlowPosition, openFolderDialog],
   )
 
   const onDragOver = useCallback((e: React.DragEvent) => {
@@ -114,17 +143,43 @@ function CanvasInner() {
   const onDrop = useCallback(
     async (e: React.DragEvent) => {
       e.preventDefault()
-      setPendingAdd(null)
+      setFloatingAdd(null)
       const pos = screenToFlowPosition({ x: e.clientX, y: e.clientY })
       await handleDrop(e.dataTransfer, pos)
     },
     [screenToFlowPosition, handleDrop],
   )
 
+  const onFilesSelected = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const list = Array.from(e.target.files ?? [])
+      e.target.value = ''
+      if (!list.length) return
+      void addFilesAt(list, pickPosRef.current)
+    },
+    [addFilesAt],
+  )
+
+  const onFolderSelected = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const list = Array.from(e.target.files ?? [])
+      e.target.value = ''
+      if (!list.length) return
+      const files = list.map((file) => ({
+        file,
+        relativePath:
+          (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name,
+      }))
+      const top = files[0].relativePath.split('/').filter(Boolean)[0] || 'Folder'
+      void addFolderAt(top, files, pickPosRef.current)
+    },
+    [addFolderAt],
+  )
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setPendingAdd(null)
+        setFloatingAdd(null)
         cancelDraft()
       }
       if (e.key === 'Enter' && draft && (e.metaKey || e.ctrlKey)) {
@@ -142,6 +197,26 @@ function CanvasInner() {
       onDragOver={onDragOver}
       onDrop={onDrop}
     >
+      {/*
+        DOM-resident pickers. Clicking these from a button keeps the user gesture —
+        unlike creating a new <input> after an awaited showDirectoryPicker() rejection.
+      */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept="image/*,.png,.jpg,.jpeg,.webp,.gif,.bmp,.avif,.pdf"
+        className="fc-hidden-file-input"
+        onChange={onFilesSelected}
+      />
+      <input
+        ref={folderInputRef}
+        type="file"
+        multiple
+        className="fc-hidden-file-input"
+        onChange={onFolderSelected}
+      />
+
       <ReactFlow
         nodes={visibleNodes}
         edges={visibleEdges}
@@ -149,7 +224,7 @@ function CanvasInner() {
         onEdgesChange={onEdgesChange}
         onMove={onMove}
         onDoubleClick={onDoubleClick}
-        onPaneClick={() => setPendingAdd(null)}
+        onPaneClick={() => setFloatingAdd(null)}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         proOptions={{ hideAttribution: true }}
@@ -177,30 +252,30 @@ function CanvasInner() {
         />
       </ReactFlow>
 
-      {visibleNodes.length === 0 && !pendingAdd && (
-        <div className="empty-hint">
-          <span>
-            Double-click to add files or a folder · Drop a folder anywhere · Shift-double-click
-            opens folder picker
-          </span>
-        </div>
+      {/* Empty canvas: centered ADD TO CANVAS (stays until nodes exist). */}
+      {canvasEmpty && !floatingAdd && (
+        <AddChooser
+          centered
+          onPickFiles={() => openFilesDialog(viewportCenterFlow())}
+          onPickFolder={() => openFolderDialog(viewportCenterFlow())}
+        />
       )}
 
-      {pendingAdd && (
+      {/* Double-click floating instance at click position (dismissible). */}
+      {floatingAdd && (
         <AddChooser
-          left={pendingAdd.screen.left}
-          top={pendingAdd.screen.top}
+          left={floatingAdd.screen.left}
+          top={floatingAdd.screen.top}
           onPickFiles={() => {
-            const pos = pendingAdd.flow
-            setPendingAdd(null)
-            void openFilePicker(pos)
+            const pos = floatingAdd.flow
+            setFloatingAdd(null)
+            openFilesDialog(pos)
           }}
           onPickFolder={() => {
-            const pos = pendingAdd.flow
-            setPendingAdd(null)
-            void openFolderPicker(pos)
+            const pos = floatingAdd.flow
+            setFloatingAdd(null)
+            openFolderDialog(pos)
           }}
-          onCancel={() => setPendingAdd(null)}
         />
       )}
 

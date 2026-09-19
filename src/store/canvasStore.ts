@@ -11,6 +11,7 @@ import {
 } from '@xyflow/react'
 import { create } from 'zustand'
 import {
+  canDecodeInBrowser,
   compatibleTargets,
   encodeFormatFromExtension,
   rewriteExtension,
@@ -245,6 +246,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     folders[graph.folder.id] = graph.folder
     for (const nf of graph.nestedFolders) folders[nf.id] = nf
 
+    // Always place the folder node on the current canvas — even if empty.
     nodes.push({
       id: uid('node'),
       type: 'folder',
@@ -259,37 +261,42 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       },
     })
 
-    let i = 0
-    for (const fileId of graph.folder.childFileIds) {
-      const entry = files[fileId]
-      nodes.push({
-        id: uid('node'),
-        type: 'file',
-        position: { x: 80 + (i % 4) * 220, y: 80 + Math.floor(i / 4) * 280 },
-        data: {
-          kind: 'file',
-          fileId: entry.id,
-          label: fileLabel(entry.name, false),
-          isResult: false,
-          canvasId: graph.folder.id,
-          jobStatus: 'idle',
-        },
-      })
-      i++
-    }
-
-    for (const nf of graph.nestedFolders) {
-      if (graph.folder.childFolderIds.includes(nf.id)) {
+    // Place every child file/folder node onto its parent folder's canvas
+    // so drill-in works for nested directories too.
+    const allFolders = [graph.folder, ...graph.nestedFolders]
+    for (const folder of allFolders) {
+      let i = 0
+      for (const fileId of folder.childFileIds) {
+        const entry = files[fileId]
+        if (!entry) continue
+        nodes.push({
+          id: uid('node'),
+          type: 'file',
+          position: { x: 80 + (i % 4) * 220, y: 80 + Math.floor(i / 4) * 280 },
+          data: {
+            kind: 'file',
+            fileId: entry.id,
+            label: fileLabel(entry.name, false),
+            isResult: false,
+            canvasId: folder.id,
+            jobStatus: 'idle',
+          },
+        })
+        i++
+      }
+      for (const childId of folder.childFolderIds) {
+        const child = folders[childId]
+        if (!child) continue
         nodes.push({
           id: uid('node'),
           type: 'folder',
-          position: { x: 80 + i * 160, y: 80 },
+          position: { x: 80 + (i % 4) * 160, y: 80 + Math.floor(i / 4) * 180 },
           data: {
             kind: 'folder',
-            folderId: nf.id,
-            label: nf.name,
+            folderId: child.id,
+            label: child.name,
             isResult: false,
-            canvasId: graph.folder.id,
+            canvasId: folder.id,
             jobStatus: 'idle',
           },
         })
@@ -632,9 +639,14 @@ async function convertFolder(
   const resultNodeId = uid('node')
   const canvasId = sourceNode.data.canvasId
 
+  const takenFolderLabels = get()
+    .nodes.filter((n) => n.data.canvasId === canvasId && n.data.kind === 'folder')
+    .map((n) => n.data.label)
+  const resultLabel = uniqueFileName(`New ${sourceFolder.name}`, takenFolderLabels)
+
   const newFolder: FolderEntry = {
     id: newFolderId,
-    name: `New ${sourceFolder.name}`,
+    name: resultLabel,
     childFileIds: [],
     childFolderIds: [],
   }
@@ -653,7 +665,7 @@ async function convertFolder(
         data: {
           kind: 'folder',
           folderId: newFolderId,
-          label: newFolder.name,
+          label: resultLabel,
           isResult: true,
           canvasId,
           settings,
@@ -673,20 +685,27 @@ async function convertFolder(
     ],
   }))
 
-  const childIds = [...sourceFolder.childFileIds]
+  // Recursively collect every convertible image in the folder tree.
+  const sourceFiles: FileEntry[] = []
+  const walk = (f: FolderEntry) => {
+    for (const fid of f.childFileIds) {
+      const file = get().files[fid]
+      if (file && canDecodeInBrowser(file.extension)) sourceFiles.push(file)
+    }
+    for (const cid of f.childFolderIds) {
+      const child = get().folders[cid]
+      if (child) walk(child)
+    }
+  }
+  walk(sourceFolder)
+
   const newChildIds: string[] = []
   const filesUpdate: Record<string, FileEntry> = {}
   const newNodes: AppNode[] = []
   const takenInFolder: string[] = []
 
   let i = 0
-  for (const fid of childIds) {
-    const sourceFile = get().files[fid]
-    if (!sourceFile) continue
-    const targets = compatibleTargets(sourceFile.extension, WEB_ENCODE_FORMATS)
-    if (!targets.includes(settings.format) && targets.length === 0) continue
-    if (!compatibleTargets(sourceFile.extension, WEB_ENCODE_FORMATS).length) continue
-
+  for (const sourceFile of sourceFiles) {
     try {
       const blob = await runConversion(sourceFile, settings)
       const objectUrl = URL.createObjectURL(blob)

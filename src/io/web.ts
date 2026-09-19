@@ -12,6 +12,22 @@ function uid(prefix = 'id'): string {
   return `${prefix}_${crypto.randomUUID().slice(0, 8)}`
 }
 
+async function probeImageSizeTimed(
+  url: string,
+  ms = 1500,
+): Promise<{ width: number; height: number } | null> {
+  try {
+    return await Promise.race([
+      probeImageSize(url),
+      new Promise<null>((resolve) => {
+        window.setTimeout(() => resolve(null), ms)
+      }),
+    ])
+  } catch {
+    return null
+  }
+}
+
 export async function createFileEntry(file: File, id = uid('file')): Promise<FileEntry> {
   const extension = normalizeExtension(file.name)
   const objectUrl = URL.createObjectURL(file)
@@ -29,12 +45,10 @@ export async function createFileEntry(file: File, id = uid('file')): Promise<Fil
     file.type.startsWith('image/') ||
     ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'avif'].includes(extension)
   ) {
-    try {
-      const size = await probeImageSize(objectUrl)
+    const size = await probeImageSizeTimed(objectUrl)
+    if (size) {
       entry.width = size.width
       entry.height = size.height
-    } catch {
-      // non-image or undecodable
     }
   }
 
@@ -126,33 +140,27 @@ async function pickFolderViaDirectoryPicker(): Promise<PickedFolder | null> {
 }
 
 /**
- * Pick an entire folder.
- * Prefer File System Access API; fall back to webkitdirectory input.
- * Call this directly from a click handler (same turn) so the gesture is valid.
+ * Pick an entire folder via webkitdirectory.
+ *
+ * IMPORTANT: Do NOT try showDirectoryPicker first and fall back after await —
+ * a rejected/failed picker consumes the user gesture, so the synthetic
+ * <input webkitdirectory>.click() then silently does nothing (macOS Chrome).
+ * The Canvas keeps a DOM-resident folder input and clicks it synchronously;
+ * this helper remains for store/tests and Shift paths that still call it.
  */
 export async function pickFolder(): Promise<PickedFolder | null> {
-  const w = window as Window & {
-    showDirectoryPicker?: () => Promise<FileSystemDirectoryHandle>
-  }
-
-  if (typeof w.showDirectoryPicker === 'function') {
-    try {
-      const picked = await pickFolderViaDirectoryPicker()
-      // Empty directory is still a successful pick.
-      if (picked) return picked
-    } catch (err) {
-      // User cancelled the native directory picker.
-      if (err instanceof DOMException && err.name === 'AbortError') return null
-      // API present but failed — fall through to <input webkitdirectory>.
-      console.warn('showDirectoryPicker failed, falling back to webkitdirectory', err)
-    }
-  }
-
   try {
     return await pickFolderViaInput()
   } catch (err) {
     console.warn('webkitdirectory folder pick failed', err)
-    return null
+    // Last resort: native directory picker (only if gesture somehow still valid).
+    try {
+      return await pickFolderViaDirectoryPicker()
+    } catch (err2) {
+      if (err2 instanceof DOMException && err2.name === 'AbortError') return null
+      console.warn('showDirectoryPicker also failed', err2)
+      return null
+    }
   }
 }
 
