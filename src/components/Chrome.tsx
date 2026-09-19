@@ -11,7 +11,7 @@ export function Chrome() {
     <>
       <div className="chrome-card chrome-title">
         <h1>File Converter</h1>
-        <p>Description about it and how it works in short</p>
+        <p>Convert files on an infinite canvas.</p>
       </div>
 
       <button
