@@ -7,35 +7,54 @@
 }
 
 :root {
+  /* Geist dark (vercel.com/design.dark.md) */
   --fc-bg: #000000;
   --fc-surface: #1a1a1a;
-  --fc-surface-hover: #242424;
-  --fc-border: #2a2a2a;
-  --fc-text: #ffffff;
-  --fc-text-muted: #9ca3af;
+  --fc-surface-hover: #292929;
+  --fc-surface-active: #292929;
+  --fc-row: #1f1f1f;
+  --fc-border: #2e2e2e;
+  --fc-text: #ededed;
+  --fc-text-muted: #a0a0a0;
+  --fc-text-subtle: #8f8f8f;
   --fc-dot: #2e2e2e;
   --fc-preview: #d1d5db;
   --fc-wire: #8a8a8a;
   --fc-folder: #5b9cff;
   --fc-folder-tab: #7ab0ff;
-  --fc-radius-lg: 16px;
-  --fc-radius-md: 12px;
-  --fc-radius-sm: 10px;
-  --fc-chrome-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  /* Geist radius: panels/controls = 6px; Dialkit rows keep 8px */
+  --fc-radius: 6px;
+  --fc-radius-lg: 6px;
+  --fc-radius-md: 6px;
+  --fc-radius-sm: 6px;
+  --fc-chrome-shadow: none;
+  --fc-focus-gap: #000000;
+  --fc-focus-ring: #47a8ff;
+  /* Emil / creative-editor ease-out */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-out-soft: cubic-bezier(0.175, 0.885, 0.32, 1.1);
+  --duration-fast: 140ms;
+  --duration-hover: 160ms;
   color-scheme: dark;
 }
 
 [data-theme='light'] {
-  --fc-bg: #f4f4f5;
+  /* Geist light (vercel.com/design.md) */
+  --fc-bg: #fafafa;
   --fc-surface: #ffffff;
-  --fc-surface-hover: #f0f0f0;
-  --fc-border: #e4e4e7;
-  --fc-text: #0a0a0a;
-  --fc-text-muted: #71717a;
-  --fc-dot: #d4d4d8;
+  --fc-surface-hover: #ebebeb;
+  --fc-surface-active: #e6e6e6;
+  --fc-row: #f2f2f2;
+  --fc-border: #eaeaea;
+  --fc-text: #171717;
+  --fc-text-muted: #4d4d4d;
+  --fc-text-subtle: #8f8f8f;
+  --fc-dot: #eaeaea;
   --fc-preview: #e4e4e7;
   --fc-wire: #a1a1aa;
-  --fc-chrome-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --fc-chrome-shadow: none;
+  --fc-focus-gap: #ffffff;
+  --fc-focus-ring: #006bff;
   color-scheme: light;
 }
 
@@ -87,14 +106,15 @@ button {
   border: 1px solid var(--fc-border);
   box-shadow: var(--fc-chrome-shadow);
   color: var(--fc-text);
+  border-radius: var(--fc-radius);
 }
 
 .chrome-title {
   top: 20px;
   left: 20px;
   width: min(280px, calc(100vw - 100px));
-  border-radius: var(--fc-radius-lg);
-  padding: 16px 18px;
+  border-radius: var(--fc-radius);
+  padding: 14px 16px;
 }
 
 .chrome-title h1 {
@@ -116,20 +136,29 @@ button {
 .chrome-round {
   position: absolute;
   z-index: 20;
-  width: 40px;
-  height: 40px;
-  border-radius: 999px;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--fc-radius);
   display: grid;
   place-items: center;
   background: var(--fc-surface);
   border: 1px solid var(--fc-border);
   box-shadow: var(--fc-chrome-shadow);
   color: var(--fc-text);
-  transition: background 0.15s ease;
+  transition:
+    background-color var(--duration-hover) var(--ease-out),
+    color var(--duration-hover) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
 }
 
-.chrome-round:hover {
-  background: var(--fc-surface-hover);
+.chrome-round:active {
+  transform: scale(0.97);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .chrome-round:hover {
+    background: var(--fc-surface-hover);
+  }
 }
 
 .chrome-theme {
@@ -145,11 +174,14 @@ button {
 .chrome-credit {
   bottom: 20px;
   right: 20px;
-  border-radius: 999px;
-  padding: 10px 16px;
+  border-radius: var(--fc-radius);
+  padding: 8px 14px;
   font-size: 13px;
   font-weight: 500;
   z-index: 20;
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  color: var(--fc-text);
 }
 
 .breadcrumb {
@@ -163,8 +195,8 @@ button {
   gap: 8px;
   background: var(--fc-surface);
   border: 1px solid var(--fc-border);
-  border-radius: 999px;
-  padding: 8px 14px;
+  border-radius: var(--fc-radius);
+  padding: 8px 12px;
   box-shadow: var(--fc-chrome-shadow);
   font-size: 13px;
   color: var(--fc-text-muted);
@@ -173,10 +205,15 @@ button {
 .breadcrumb button {
   color: var(--fc-text);
   font-weight: 500;
+  border-radius: var(--fc-radius);
+  padding: 2px 4px;
+  transition: color var(--duration-hover) var(--ease-out);
 }
 
-.breadcrumb button:hover {
-  color: var(--fc-text-muted);
+@media (hover: hover) and (pointer: fine) {
+  .breadcrumb button:hover {
+    color: var(--fc-text-muted);
+  }
 }
 
 .breadcrumb .sep {
@@ -251,17 +288,24 @@ button {
 .file-node__card {
   width: 168px;
   height: 210px;
-  border-radius: 18px;
+  border-radius: var(--fc-radius);
   background: var(--fc-preview);
   overflow: visible;
   position: relative;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--fc-border);
+  box-shadow: none;
+  transition: border-color var(--duration-hover) var(--ease-out);
+}
+
+.file-node.is-hovered .file-node__card,
+.file-node:hover .file-node__card {
+  border-color: var(--fc-text-subtle);
 }
 
 .file-node__card-media {
   width: 100%;
   height: 100%;
-  border-radius: 18px;
+  border-radius: var(--fc-radius);
   overflow: hidden;
   background: var(--fc-preview);
 }
@@ -273,14 +317,14 @@ button {
   object-fit: cover;
   display: block;
   pointer-events: none;
-  border-radius: 18px;
+  border-radius: var(--fc-radius);
 }
 
 .file-node__plus {
   position: absolute;
-  right: -16px;
+  right: -14px;
   top: 50%;
-  transform: translateY(-50%);
+  transform: translateY(-50%) scale(0.96);
   width: 28px;
   height: 28px;
   border-radius: 999px;
@@ -288,10 +332,14 @@ button {
   color: #111;
   display: grid;
   place-items: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--fc-border);
+  box-shadow: none;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.12s ease, transform 0.12s ease;
+  transition:
+    opacity var(--duration-hover) var(--ease-out),
+    transform var(--duration-hover) var(--ease-out),
+    background-color var(--duration-hover) var(--ease-out);
   z-index: 5;
 }
 
@@ -300,10 +348,18 @@ button {
 .file-node.is-connecting .file-node__plus {
   opacity: 1;
   pointer-events: auto;
+  transform: translateY(-50%) scale(1);
 }
 
-.file-node__plus:hover {
-  transform: translateY(-50%) scale(1.06);
+.file-node__plus:active {
+  transform: translateY(-50%) scale(0.97);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .file-node__plus:hover {
+    transform: translateY(-50%) scale(1.04);
+    background: #f5f5f5;
+  }
 }
 
 /* Hit bridge above the card — padding-bottom fills the gap down to the card. */
@@ -317,6 +373,7 @@ button {
   z-index: 8;
   opacity: 0;
   pointer-events: none;
+  transition: opacity var(--duration-hover) var(--ease-out);
 }
 
 .file-node:hover .file-node__toolbar-bridge,
@@ -331,8 +388,8 @@ button {
   gap: 0;
   background: var(--fc-surface);
   border: 1px solid var(--fc-border);
-  border-radius: 999px;
-  padding: 4px;
+  border-radius: var(--fc-radius);
+  padding: 2px;
   box-shadow: var(--fc-chrome-shadow);
   white-space: nowrap;
   pointer-events: auto;
@@ -343,25 +400,34 @@ button {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 40px;
+  min-height: 36px;
   min-width: 44px;
-  padding: 10px 16px;
+  padding: 8px 12px;
   font-size: 13px;
   font-weight: 500;
   color: var(--fc-text);
-  border-radius: 999px;
+  border-radius: var(--fc-radius);
   cursor: pointer;
   pointer-events: auto;
   touch-action: manipulation;
+  transition:
+    background-color var(--duration-hover) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
 }
 
-.file-node__toolbar button:hover {
-  background: var(--fc-surface-hover);
+.file-node__toolbar button:active {
+  transform: scale(0.97);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .file-node__toolbar button:hover {
+    background: var(--fc-surface-hover);
+  }
 }
 
 .file-node__toolbar .divider {
   width: 1px;
-  height: 20px;
+  height: 18px;
   background: var(--fc-border);
   margin: 0 2px;
   flex-shrink: 0;
@@ -381,14 +447,23 @@ button {
   width: 88px;
   height: 72px;
   position: relative;
-  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.35));
+  filter: none;
+  transition: transform var(--duration-hover) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .folder-node.is-hovered .folder-node__glyph,
+  .folder-node:hover .folder-node__glyph {
+    transform: scale(1.02);
+  }
 }
 
 .folder-node__label {
   font-size: 13px;
   font-weight: 500;
   color: var(--fc-text);
-  text-align: center;
+  text-align: left;
+  align-self: stretch;
   max-width: 140px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -406,10 +481,14 @@ button {
   color: #111;
   display: grid;
   place-items: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--fc-border);
+  box-shadow: none;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.12s ease;
+  transform: scale(0.96);
+  transition:
+    opacity var(--duration-hover) var(--ease-out),
+    transform var(--duration-hover) var(--ease-out);
   z-index: 5;
 }
 
@@ -417,45 +496,67 @@ button {
 .folder-node.is-hovered .folder-node__plus {
   opacity: 1;
   pointer-events: auto;
+  transform: scale(1);
+}
+
+.folder-node__plus:active {
+  transform: scale(0.97);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .folder-node__plus:hover {
+    transform: scale(1.04);
+  }
 }
 
 .connection-panel {
-  /* Dialkit-aligned tokens so format list + actions match the sliders. */
-  --dial-surface: rgba(255, 255, 255, 0.05);
-  --dial-surface-hover: rgba(255, 255, 255, 0.1);
-  --dial-surface-active: rgba(255, 255, 255, 0.11);
-  --dial-surface-subtle: rgba(255, 255, 255, 0.06);
-  --dial-text-root: #ffffff;
-  --dial-text-section: rgba(255, 255, 255, 0.7);
-  --dial-text-label: rgba(255, 255, 255, 0.7);
-  --dial-text-secondary: rgba(255, 255, 255, 0.6);
-  --dial-border: rgba(255, 255, 255, 0.1);
-  --dial-glass-bg: #212121;
+  /* Geist panel shell + Dialkit row tokens (radius 8 / row 36 kept for Dialkit). */
+  --dial-surface: #1f1f1f;
+  --dial-surface-hover: #292929;
+  --dial-surface-active: #292929;
+  --dial-surface-subtle: #2e2e2e;
+  --dial-text-root: #ededed;
+  --dial-text-section: #a0a0a0;
+  --dial-text-label: #a0a0a0;
+  --dial-text-secondary: #a0a0a0;
+  --dial-border: #2e2e2e;
+  --dial-glass-bg: #1a1a1a;
   --dial-radius: 8px;
   --dial-row-height: 36px;
   --dial-row-gap: 6px;
-  --dial-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --dial-shadow: none;
 
   position: absolute;
   z-index: 30;
   width: 280px;
-  background: var(--dial-glass-bg);
-  border: 1px solid var(--dial-border);
-  border-radius: 14px;
-  box-shadow: var(--dial-shadow);
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  border-radius: var(--fc-radius);
+  box-shadow: none;
   padding: 12px;
-  color: var(--dial-text-root);
-  font-family: system-ui, -apple-system, 'SF Pro Display', sans-serif;
+  color: var(--fc-text);
+  font-family: 'Geist', ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+}
+
+[data-theme='light'] .connection-panel {
+  --dial-surface: #f2f2f2;
+  --dial-surface-hover: #ebebeb;
+  --dial-surface-active: #e6e6e6;
+  --dial-surface-subtle: #eaeaea;
+  --dial-text-root: #171717;
+  --dial-text-section: #4d4d4d;
+  --dial-text-label: #4d4d4d;
+  --dial-text-secondary: #4d4d4d;
+  --dial-border: #eaeaea;
+  --dial-glass-bg: #ffffff;
 }
 
 .connection-panel h3 {
   margin: 0;
   font-size: 13px;
   font-weight: 600;
-  color: var(--dial-text-root);
+  color: var(--fc-text);
   letter-spacing: 0;
 }
 
@@ -477,21 +578,31 @@ button {
   place-items: center;
   width: var(--dial-row-height);
   height: var(--dial-row-height);
-  border-radius: var(--dial-radius);
-  color: var(--dial-text-label);
+  border-radius: var(--fc-radius);
+  color: var(--fc-text-muted);
   flex-shrink: 0;
   background: transparent;
+  transition:
+    background-color var(--duration-hover) var(--ease-out),
+    color var(--duration-hover) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
 }
 
-.connection-panel__back:hover {
-  background: var(--dial-surface-hover);
-  color: var(--dial-text-root);
+.connection-panel__back:active {
+  transform: scale(0.97);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .connection-panel__back:hover {
+    background: var(--fc-surface-hover);
+    color: var(--fc-text);
+  }
 }
 
 .connection-panel__hint {
   margin: 0 0 8px;
   font-size: 12px;
-  color: var(--dial-text-secondary);
+  color: var(--fc-text-muted);
 }
 
 .format-list {
@@ -513,19 +624,35 @@ button {
   font-weight: 500;
   color: var(--dial-text-label);
   background: var(--dial-surface);
-  border: none;
+  border: 1px solid transparent;
+  transition:
+    background-color var(--duration-hover) var(--ease-out),
+    color var(--duration-hover) var(--ease-out),
+    border-color var(--duration-hover) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
 }
 
-.format-list button:hover,
+.format-list button:active {
+  transform: scale(0.97);
+}
+
 .format-list button.is-active {
   background: var(--dial-surface-hover);
   color: var(--dial-text-root);
+  border-color: var(--dial-border);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .format-list button:hover {
+    background: var(--dial-surface-hover);
+    color: var(--dial-text-root);
+  }
 }
 
 .connection-panel label {
   display: block;
   font-size: 11px;
-  color: var(--dial-text-secondary);
+  color: var(--fc-text-subtle);
   margin-bottom: 6px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -534,7 +661,7 @@ button {
 .connection-panel .size-hint {
   margin: 8px 0 10px;
   font-size: 12px;
-  color: var(--dial-text-secondary);
+  color: var(--fc-text-muted);
 }
 
 .connection-panel .actions {
@@ -546,28 +673,42 @@ button {
 .connection-panel .actions button {
   flex: 1;
   height: var(--dial-row-height);
-  border-radius: var(--dial-radius);
+  border-radius: var(--fc-radius);
   padding: 0 12px;
   font-size: 13px;
   font-weight: 500;
-  color: var(--dial-text-label);
-  background: var(--dial-surface);
-  border: none;
+  color: var(--fc-text-muted);
+  background: var(--fc-row);
+  border: 1px solid var(--fc-border);
+  transition:
+    background-color var(--duration-hover) var(--ease-out),
+    color var(--duration-hover) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
 }
 
-.connection-panel .actions button:hover {
-  background: var(--dial-surface-hover);
-  color: var(--dial-text-root);
+.connection-panel .actions button:active {
+  transform: scale(0.97);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .connection-panel .actions button:hover {
+    background: var(--fc-surface-hover);
+    color: var(--fc-text);
+  }
 }
 
 .connection-panel .actions button.primary {
-  background: #ffffff;
-  color: #111111;
+  background: var(--fc-text);
+  color: var(--fc-bg);
+  border-color: transparent;
 }
 
-.connection-panel .actions button.primary:hover {
-  background: #f0f0f0;
-  color: #111111;
+@media (hover: hover) and (pointer: fine) {
+  .connection-panel .actions button.primary:hover {
+    opacity: 0.92;
+    color: var(--fc-bg);
+    background: var(--fc-text);
+  }
 }
 
 .connection-panel .dial-host {
@@ -662,7 +803,7 @@ button {
   width: min(320px, calc(100vw - 40px));
   background: var(--fc-surface);
   border: 1px solid var(--fc-border);
-  border-radius: 14px;
+  border-radius: var(--fc-radius);
   padding: 14px 16px;
   box-shadow: var(--fc-chrome-shadow);
   font-size: 13px;
@@ -689,8 +830,8 @@ button {
 }
 
 .empty-hint span {
-  background: rgba(26, 26, 26, 0.72);
+  background: var(--fc-surface);
   border: 1px solid var(--fc-border);
-  border-radius: 999px;
+  border-radius: var(--fc-radius);
   padding: 10px 16px;
 }
