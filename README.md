@@ -2,9 +2,7 @@
 
 **Convert images on an infinite canvas — formats, quality, and folders, all in the browser.**
 
-File Converter is a local-first tool for turning PNGs, JPGs, WEBPs (and more) into other formats without uploading anything. Drop files or whole folders onto a dotted canvas, wire conversions with `+`, tweak quality and resolution, then save results. The same UI is designed to wrap in Tauri as a Mac app later.
-
-**PR:** [#1 — Milestone 1 web app](https://github.com/kiiradesign/file-converter/pull/1) (`cursor/file-converter-web-milestone-763f`)
+File Converter is a local-first tool for turning PNGs, JPGs, WEBPs (and more) into other formats without uploading anything. Drop files or whole folders onto a dotted canvas, wire conversions with `+`, tweak quality and resolution, then save results.
 
 Built for people who want conversion to feel like arranging work on a desk — not filling out a form.
 
@@ -20,14 +18,13 @@ Most converters are upload → wait → download, with no sense of history. Here
 
 - **Infinite dotted canvas** with file and folder nodes (aspect-correct previews at full source resolution)
 - **Add files or an entire folder** — double-click → Files / Folder chooser; Shift-double-click → folder picker; drag-and-drop folders
-- **Formats that actually encode in-browser:** PNG, JPG, WEBP, AVIF, GIF, BMP, PDF  
-  (HEIC encode deferred — no solid in-browser encoder yet)
+- **In-browser encode:** PNG, JPG, WEBP, AVIF, GIF, BMP, PDF
 - Convert list shows **other formats only** (same-format re-encode stays on **Compress**)
-- **Quality** and **Resolution** sliders (Dialkit); convert panel titled **Convert to JPG** (etc.)
+- **Quality** and **Resolution** sliders; convert panel titled **Convert to JPG** (etc.)
 - **Compress** creates a new chained same-format result (never mutates the source)
 - **Save** downloads a file; folder Save zips contents
 - Folder drill-in with breadcrumb back navigation
-- Dark / light chrome (Geist-like tokens)
+- Dark / light chrome
 - Fully **client-side** — no server uploads, no tracking
 
 ---
@@ -41,7 +38,7 @@ Most converters are upload → wait → download, with no sense of history. Here
 2. Hover a file → click **`+`** to convert to another format (source format is not listed).
 3. Pick a format, tune quality / resolution, click **Convert**.
 4. Hover a result → **Compress** to re-encode further (same type); or **Save** to download.
-5. Double-click / click a **folder** node to drill in; use the breadcrumb to go back.
+5. Click a **folder** node to drill in; use the breadcrumb to go back.
 
 That's it.
 
@@ -64,7 +61,6 @@ No backend. No uploads. No tracking.
 ```bash
 git clone https://github.com/kiiradesign/file-converter.git
 cd file-converter
-git checkout cursor/file-converter-web-milestone-763f   # current PR branch
 npm install
 npm run dev -- --host 127.0.0.1 --port 5173
 ```
@@ -75,9 +71,3 @@ Open [http://127.0.0.1:5173/](http://127.0.0.1:5173/).
 npm run build   # production build
 npm run lint    # oxlint
 ```
-
----
-
-## Milestone notes
-
-**Milestone 1 (this PR)** ships the browser canvas converter. A later Tauri shell can reuse the same UI for a native Mac app without changing the conversion model.
