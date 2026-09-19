@@ -1,5 +1,5 @@
 import { Handle, Position, useViewport, type NodeProps } from '@xyflow/react'
-import { ChevronDown, Download, Image as ImageIcon, Pencil, Plus } from 'lucide-react'
+import { Download, Image as ImageIcon, Minimize2, Plus } from 'lucide-react'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useCanvasStore, type FileNodeData } from '../../store/canvasStore'
 import { PixelationPreview } from '../PixelationPreview'
@@ -62,13 +62,14 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
   const running = data.jobStatus === 'running'
   const src = file?.objectUrl || null
   const showHoverChrome = hovered && !draftOpen
+  const showSave = data.isResult
 
   const card = useMemo(
     () => previewCardSize(file?.width, file?.height),
     [file?.width, file?.height],
   )
-  // Reserve space above the card for the counter-scaled toolbar + hover bridge.
-  const toolbarSpace = Math.ceil(72 * Math.min(counter, 2.5))
+  // Toolbar (~32px) + tight bridge gap (~8px), counter-scaled.
+  const toolbarSpace = Math.ceil(40 * Math.min(counter, 2.5))
 
   const onPlus = useCallback(
     (e: React.MouseEvent) => {
@@ -101,6 +102,25 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
           onPointerDown={stopDrag}
         >
           <div className="file-node__toolbar">
+            {showSave && (
+              <>
+                <button
+                  type="button"
+                  className="nodrag nopan"
+                  onPointerDown={stopDrag}
+                  onMouseDown={stopDrag}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    e.preventDefault()
+                    void saveNode(id)
+                  }}
+                >
+                  <Download size={14} strokeWidth={1.75} />
+                  Save
+                </button>
+                <span className="divider" aria-hidden />
+              </>
+            )}
             <button
               type="button"
               className="nodrag nopan"
@@ -112,24 +132,8 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
                 startAdjust(id, { x: 0, y: 0 })
               }}
             >
-              <Pencil size={14} strokeWidth={1.75} />
+              <Minimize2 size={14} strokeWidth={1.75} />
               Compress
-              <ChevronDown size={14} strokeWidth={1.75} />
-            </button>
-            <span className="divider" aria-hidden />
-            <button
-              type="button"
-              className="nodrag nopan"
-              onPointerDown={stopDrag}
-              onMouseDown={stopDrag}
-              onClick={(e) => {
-                e.stopPropagation()
-                e.preventDefault()
-                void saveNode(id)
-              }}
-            >
-              <Download size={14} strokeWidth={1.75} />
-              Save
             </button>
           </div>
         </div>

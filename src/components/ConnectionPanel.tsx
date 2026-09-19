@@ -63,12 +63,12 @@ function panelPositionForNode(
   const w = measured?.width ?? (source.data.kind === 'folder' ? 120 : 180)
   const h = measured?.height ?? (source.data.kind === 'folder' ? 120 : 240)
 
-  // Same anchor for + and Adjust: to the right of the node (near the plus handle).
+  // Sit just past the + handle — close to the node without covering it.
   const screen = flowToScreenPosition({
-    x: source.position.x + w + 12,
-    y: source.position.y + h * 0.45,
+    x: source.position.x + w + 6,
+    y: source.position.y + h * 0.4,
   })
-  return clampPanelPosition(screen.x + 8, screen.y - 48)
+  return clampPanelPosition(screen.x + 4, screen.y - 36)
 }
 
 export function ConnectionPanel() {
