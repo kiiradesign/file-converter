@@ -1,7 +1,7 @@
 import { DialRoot, useDialKit } from 'dialkit'
-import { useReactFlow, useStore, useViewport, type Node } from '@xyflow/react'
+import { useStore, useViewport, type Node } from '@xyflow/react'
 import { ArrowLeft } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { compatibleTargets, formatLabel, WEB_ENCODE_FORMATS } from '../convert/formats'
 import { useCanvasStore, type AppNode } from '../store/canvasStore'
 import type { ConvertFormat } from '../types'
@@ -43,43 +43,41 @@ function DialSliders({ draftKey }: { draftKey: string }) {
 }
 
 const PANEL_W = 280
-const PANEL_H_EST = 260
 const PANEL_MARGIN = 16
-/** Screen-space breath between node top-right and panel. */
+/** Breath between node right edge and panel left. */
 const PANEL_NODE_GAP = 10
 
-function clampPanelPosition(left: number, top: number) {
-  const maxLeft = Math.max(PANEL_MARGIN, window.innerWidth - PANEL_W - PANEL_MARGIN)
-  const maxTop = Math.max(PANEL_MARGIN, window.innerHeight - PANEL_H_EST - PANEL_MARGIN)
+/**
+ * Panel top = node top; panel left = node right + gap.
+ * Uses DOM rects so Y matches the painted node (any aspect), not a guessed
+ * mid-height offset. Coordinates are relative to `originEl` (app-shell).
+ */
+function panelPositionFromNodeEl(
+  nodeEl: Element,
+  originEl: Element,
+): { left: number; top: number } {
+  const nodeRect = nodeEl.getBoundingClientRect()
+  const originRect = originEl.getBoundingClientRect()
+  const left = nodeRect.right - originRect.left + PANEL_NODE_GAP
+  const top = nodeRect.top - originRect.top
+  const maxLeft = Math.max(PANEL_MARGIN, originRect.width - PANEL_W - PANEL_MARGIN)
   return {
+    // Keep top locked to the node — only clamp horizontally so the panel
+    // stays on-screen without drifting its Y relative to the node.
     left: Math.min(Math.max(PANEL_MARGIN, left), maxLeft),
-    top: Math.min(Math.max(PANEL_MARGIN, top), maxTop),
+    top,
   }
 }
 
-function panelPositionForNode(
-  source: AppNode,
-  flowToScreenPosition: (p: { x: number; y: number }) => { x: number; y: number },
-): { left: number; top: number } {
-  const measured = (source as Node).measured
-  const w = measured?.width ?? (source.data.kind === 'folder' ? 120 : 180)
-
-  // Anchor to the node's top-right corner in flow space → screen.
-  const topRight = flowToScreenPosition({
-    x: source.position.x + w,
-    y: source.position.y,
-  })
-  return clampPanelPosition(topRight.x + PANEL_NODE_GAP, topRight.y)
-}
-
 export function ConnectionPanel() {
-  const { flowToScreenPosition } = useReactFlow()
   const viewport = useViewport()
   const draft = useCanvasStore((s) => s.draft)
   const files = useCanvasStore((s) => s.files)
   const updateDraftSettings = useCanvasStore((s) => s.updateDraftSettings)
   const confirmDraft = useCanvasStore((s) => s.confirmDraft)
   const cancelDraft = useCanvasStore((s) => s.cancelDraft)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const [position, setPosition] = useState({ left: 24, top: 96 })
 
   // Live RF node (position + measured) so pan/zoom/drag stay in sync.
   const source = useStore((s) => {
@@ -108,21 +106,36 @@ export function ConnectionPanel() {
     setView(draft.mode === 'adjust' ? 'sliders' : 'formats')
   }, [draft?.sourceNodeId, draft?.mode])
 
-  const position = useMemo(() => {
-    if (!draft || !source) return { left: 24, top: 96 }
-    return panelPositionForNode(source, flowToScreenPosition)
-    // viewport x/y/zoom + node geometry — recompute on every pan/zoom/drag.
+  // Recompute from the painted node box on every viewport / geometry change.
+  useLayoutEffect(() => {
+    if (!draft?.sourceNodeId || !source) return
+
+    const update = () => {
+      const nodeEl = document.querySelector(
+        `.react-flow__node[data-id="${draft.sourceNodeId}"]`,
+      )
+      const originEl =
+        panelRef.current?.offsetParent instanceof Element
+          ? panelRef.current.offsetParent
+          : document.querySelector('.app-shell')
+      if (!nodeEl || !originEl) return
+      setPosition(panelPositionFromNodeEl(nodeEl, originEl))
+    }
+
+    update()
+    // One more frame after measure/layout settles (aspect-varying file cards).
+    const raf = requestAnimationFrame(update)
+    return () => cancelAnimationFrame(raf)
   }, [
-    draft,
+    draft?.sourceNodeId,
     source,
-    flowToScreenPosition,
-    viewport.x,
-    viewport.y,
-    viewport.zoom,
     source?.position.x,
     source?.position.y,
     (source as Node | null)?.measured?.width,
     (source as Node | null)?.measured?.height,
+    viewport.x,
+    viewport.y,
+    viewport.zoom,
   ])
 
   if (!draft || !source) return null
@@ -136,6 +149,7 @@ export function ConnectionPanel() {
 
   return (
     <div
+      ref={panelRef}
       className="connection-panel"
       style={{ top: position.top, left: position.left, right: 'auto' }}
       onMouseDown={(e) => e.stopPropagation()}

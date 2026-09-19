@@ -436,10 +436,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     }
 
     const settings = { ...draft.settings }
-    const offset =
-      draft.mode === 'adjust'
-        ? { x: 280, y: 40 }
-        : { x: 280, y: 0 }
+    // Place results to the right and slightly below so bezier edges curve
+    // instead of sitting on a flat horizontal line.
+    const offset = { x: 280, y: 56 }
 
     if (sourceNode.data.kind === 'folder') {
       await convertFolder(get, set, sourceNode, settings, offset)
