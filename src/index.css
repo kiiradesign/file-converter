@@ -1,0 +1,976 @@
+@font-face {
+  font-family: 'Geist';
+  src: url('/fonts/Geist-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /*
+   * Vercel / Geist-adjacent dark canvas tokens.
+   * Borders use #262626 (not muddy #2e2e2e). Surfaces stay near-black for
+   * sharp contrast on #000 — matching Vercel product chrome.
+   */
+  --fc-bg: #000000;
+  --fc-surface: #111111;
+  --fc-surface-hover: #1a1a1a;
+  --fc-surface-active: #262626;
+  --fc-row: #171717;
+  --fc-border: #262626;
+  --fc-border-strong: #404040;
+  --fc-text: #ededed;
+  --fc-text-muted: #888888;
+  --fc-text-subtle: #666666;
+  --fc-dot: #333333;
+  --fc-preview: #e5e5e5;
+  --fc-wire: #666666;
+  --fc-folder: #0070f3;
+  --fc-folder-tab: #3291ff;
+  /* Geist control radius */
+  --fc-radius: 6px;
+  --fc-radius-lg: 6px;
+  --fc-radius-md: 6px;
+  --fc-radius-sm: 6px;
+  --fc-chrome-shadow: none;
+  --fc-focus-gap: #000000;
+  --fc-focus-ring: #0070f3;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-out-soft: cubic-bezier(0.175, 0.885, 0.32, 1.1);
+  --duration-fast: 140ms;
+  --duration-hover: 160ms;
+  color-scheme: dark;
+}
+
+[data-theme='light'] {
+  /* Vercel / Geist light */
+  --fc-bg: #fafafa;
+  --fc-surface: #ffffff;
+  --fc-surface-hover: #f5f5f5;
+  --fc-surface-active: #ebebeb;
+  --fc-row: #f5f5f5;
+  --fc-border: #eaeaea;
+  --fc-border-strong: #c4c4c4;
+  --fc-text: #171717;
+  --fc-text-muted: #666666;
+  --fc-text-subtle: #999999;
+  --fc-dot: #eaeaea;
+  --fc-preview: #eaeaea;
+  --fc-wire: #999999;
+  --fc-folder: #0070f3;
+  --fc-folder-tab: #3291ff;
+  --fc-chrome-shadow: none;
+  --fc-focus-gap: #ffffff;
+  --fc-focus-ring: #0070f3;
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--fc-bg);
+  color: var(--fc-text);
+  font-family: 'Geist', ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  padding: 0;
+}
+
+.app-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: var(--fc-bg);
+}
+
+.chrome-card {
+  position: absolute;
+  z-index: 20;
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  box-shadow: var(--fc-chrome-shadow);
+  color: var(--fc-text);
+  border-radius: var(--fc-radius);
+}
+
+.chrome-title {
+  top: 20px;
+  left: 20px;
+  width: min(280px, calc(100vw - 100px));
+  border-radius: var(--fc-radius);
+  padding: 14px 16px;
+}
+
+.chrome-title h1 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.chrome-title p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--fc-text-muted);
+  font-weight: 400;
+}
+
+.chrome-round {
+  position: absolute;
+  z-index: 20;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--fc-radius);
+  display: grid;
+  place-items: center;
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  box-shadow: var(--fc-chrome-shadow);
+  color: var(--fc-text);
+  transition:
+    background-color var(--duration-hover) var(--ease-out),
+    color var(--duration-hover) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.chrome-round:active {
+  transform: scale(0.97);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .chrome-round:hover {
+    background: var(--fc-surface-hover);
+  }
+}
+
+.chrome-theme {
+  top: 20px;
+  right: 20px;
+}
+
+.chrome-help {
+  bottom: 20px;
+  left: 20px;
+}
+
+.chrome-credit {
+  bottom: 20px;
+  right: 20px;
+  border-radius: var(--fc-radius);
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 20;
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  color: var(--fc-text);
+}
+
+.breadcrumb {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  border-radius: var(--fc-radius);
+  padding: 8px 12px;
+  box-shadow: var(--fc-chrome-shadow);
+  font-size: 13px;
+  color: var(--fc-text-muted);
+}
+
+.breadcrumb button {
+  color: var(--fc-text);
+  font-weight: 500;
+  border-radius: var(--fc-radius);
+  padding: 2px 4px;
+  transition: color var(--duration-hover) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .breadcrumb button:hover {
+    color: var(--fc-text-muted);
+  }
+}
+
+.breadcrumb .sep {
+  opacity: 0.4;
+}
+
+/* React Flow overrides */
+.react-flow {
+  background: transparent !important;
+}
+
+.react-flow__node {
+  cursor: grab;
+}
+
+.react-flow__node:active {
+  cursor: grabbing;
+}
+
+.react-flow__attribution {
+  display: none !important;
+}
+
+.react-flow__handle {
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  min-width: 1px;
+  min-height: 1px;
+  border: none;
+  background: transparent;
+  pointer-events: none;
+}
+
+.file-node {
+  position: relative;
+  width: 168px;
+  user-select: none;
+  /* Padding above reserves the toolbar + hover bridge so moving from
+     card → Adjust/Save does not drop :hover / is-hovered. */
+  padding-top: 72px;
+  box-sizing: content-box;
+}
+
+.file-node__label {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--fc-text);
+  white-space: nowrap;
+  transform-origin: left top;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-node__label span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-node__label svg {
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.file-node__card {
+  width: 168px;
+  height: 210px;
+  border-radius: var(--fc-radius);
+  background: var(--fc-preview);
+  overflow: visible;
+  position: relative;
+  border: 1px solid var(--fc-border);
+  box-shadow: none;
+  transition: border-color var(--duration-hover) var(--ease-out);
+}
+
+.file-node.is-hovered .file-node__card,
+.file-node:hover .file-node__card {
+  border-color: var(--fc-border-strong);
+}
+
+.file-node__card-media {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--fc-radius);
+  overflow: hidden;
+  background: var(--fc-preview);
+}
+
+.file-node__card img,
+.file-node__card canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+  border-radius: var(--fc-radius);
+}
+
+.file-node__preview {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: var(--fc-radius);
+}
+
+.file-node__preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  /* Prefer crisp downscale from full-res source; never invent blur. */
+  image-rendering: auto;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+.file-node__preview-dissolve {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  image-rendering: pixelated;
+}
+
+.file-node__placeholder {
+  width: 100%;
+  height: 100%;
+  background: var(--fc-row);
+  display: grid;
+  place-items: center;
+}
+
+.file-node__placeholder--doc {
+  color: var(--fc-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.add-chooser {
+  position: absolute;
+  z-index: 40;
+  width: 240px;
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  border-radius: var(--fc-radius);
+  padding: 8px;
+  box-shadow: none;
+  color: var(--fc-text);
+}
+
+.add-chooser__hint {
+  margin: 4px 8px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fc-text-subtle);
+}
+
+.add-chooser__option {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  text-align: left;
+  padding: 10px;
+  border-radius: var(--fc-radius);
+  color: var(--fc-text);
+  transition:
+    background-color var(--duration-hover) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.add-chooser__option svg {
+  margin-top: 2px;
+  flex-shrink: 0;
+  color: var(--fc-text-muted);
+}
+
+.add-chooser__option span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.add-chooser__option strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.add-chooser__option em {
+  font-style: normal;
+  font-size: 12px;
+  color: var(--fc-text-muted);
+}
+
+.add-chooser__option:active {
+  transform: scale(0.97);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .add-chooser__option:hover {
+    background: var(--fc-surface-hover);
+  }
+}
+
+.add-chooser__cancel {
+  width: 100%;
+  margin-top: 4px;
+  height: 32px;
+  border-radius: var(--fc-radius);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--fc-text-muted);
+  transition: background-color var(--duration-hover) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .add-chooser__cancel:hover {
+    background: var(--fc-surface-hover);
+    color: var(--fc-text);
+  }
+}
+
+.file-node__plus {
+  position: absolute;
+  right: -14px;
+  top: 50%;
+  transform: translateY(-50%) scale(0.96);
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #000000;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--fc-border-strong);
+  box-shadow: none;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity var(--duration-hover) var(--ease-out),
+    transform var(--duration-hover) var(--ease-out),
+    background-color var(--duration-hover) var(--ease-out),
+    border-color var(--duration-hover) var(--ease-out);
+  z-index: 5;
+}
+
+.file-node:hover .file-node__plus,
+.file-node.is-hovered .file-node__plus,
+.file-node.is-connecting .file-node__plus {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(-50%) scale(1);
+}
+
+.file-node__plus:active {
+  transform: translateY(-50%) scale(0.97);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .file-node__plus:hover {
+    transform: translateY(-50%) scale(1.04);
+    background: #f5f5f5;
+  }
+}
+
+/* Hit bridge above the card — padding-bottom fills the gap down to the card. */
+.file-node__toolbar-bridge {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  transform-origin: top center;
+  padding-bottom: 16px;
+  z-index: 8;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-hover) var(--ease-out);
+}
+
+.file-node:hover .file-node__toolbar-bridge,
+.file-node.is-hovered .file-node__toolbar-bridge {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.file-node__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  border-radius: var(--fc-radius);
+  padding: 2px;
+  box-shadow: var(--fc-chrome-shadow);
+  white-space: nowrap;
+  pointer-events: auto;
+}
+
+.file-node__toolbar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  min-width: 44px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--fc-text);
+  border-radius: var(--fc-radius);
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+  transition:
+    background-color var(--duration-hover) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.file-node__toolbar button:active {
+  transform: scale(0.97);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .file-node__toolbar button:hover {
+    background: var(--fc-surface-hover);
+  }
+}
+
+.file-node__toolbar .divider {
+  width: 1px;
+  height: 18px;
+  background: var(--fc-border);
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+
+.folder-node {
+  width: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  user-select: none;
+  position: relative;
+}
+
+.folder-node__glyph {
+  width: 88px;
+  height: 72px;
+  position: relative;
+  filter: none;
+  transition: transform var(--duration-hover) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .folder-node.is-hovered .folder-node__glyph,
+  .folder-node:hover .folder-node__glyph {
+    transform: scale(1.02);
+  }
+}
+
+.folder-node__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--fc-text);
+  text-align: left;
+  align-self: stretch;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-node__plus {
+  position: absolute;
+  right: -8px;
+  top: 28px;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #000000;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--fc-border-strong);
+  box-shadow: none;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.96);
+  transition:
+    opacity var(--duration-hover) var(--ease-out),
+    transform var(--duration-hover) var(--ease-out);
+  z-index: 5;
+}
+
+.folder-node:hover .folder-node__plus,
+.folder-node.is-hovered .folder-node__plus {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1);
+}
+
+.folder-node__plus:active {
+  transform: scale(0.97);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .folder-node__plus:hover {
+    transform: scale(1.04);
+  }
+}
+
+.connection-panel {
+  /* Dialkit rows stay 8px / 36px; colors mirror Geist chrome tokens. */
+  --dial-surface: var(--fc-row);
+  --dial-surface-hover: var(--fc-surface-hover);
+  --dial-surface-active: var(--fc-surface-active);
+  --dial-surface-subtle: var(--fc-border);
+  --dial-text-root: var(--fc-text);
+  --dial-text-section: var(--fc-text-muted);
+  --dial-text-label: var(--fc-text-muted);
+  --dial-text-secondary: var(--fc-text-muted);
+  --dial-border: var(--fc-border);
+  --dial-glass-bg: var(--fc-surface);
+  --dial-radius: 8px;
+  --dial-row-height: 36px;
+  --dial-row-gap: 6px;
+  --dial-shadow: none;
+
+  position: absolute;
+  z-index: 30;
+  width: 280px;
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  border-radius: var(--fc-radius);
+  box-shadow: none;
+  padding: 12px;
+  color: var(--fc-text);
+  font-family: 'Geist', ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+[data-theme='light'] .connection-panel {
+  --dial-surface: var(--fc-row);
+  --dial-surface-hover: var(--fc-surface-hover);
+  --dial-surface-active: var(--fc-surface-active);
+  --dial-surface-subtle: var(--fc-border);
+  --dial-text-root: var(--fc-text);
+  --dial-text-section: var(--fc-text-muted);
+  --dial-text-label: var(--fc-text-muted);
+  --dial-text-secondary: var(--fc-text-muted);
+  --dial-border: var(--fc-border);
+  --dial-glass-bg: var(--fc-surface);
+}
+
+.connection-panel h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fc-text);
+  letter-spacing: 0;
+}
+
+.connection-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  min-height: var(--dial-row-height);
+}
+
+.connection-panel__header h3 {
+  flex: 1;
+  line-height: var(--dial-row-height);
+}
+
+.connection-panel__back {
+  display: grid;
+  place-items: center;
+  width: var(--dial-row-height);
+  height: var(--dial-row-height);
+  border-radius: var(--fc-radius);
+  color: var(--fc-text-muted);
+  flex-shrink: 0;
+  background: transparent;
+  transition:
+    background-color var(--duration-hover) var(--ease-out),
+    color var(--duration-hover) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.connection-panel__back:active {
+  transform: scale(0.97);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .connection-panel__back:hover {
+    background: var(--fc-surface-hover);
+    color: var(--fc-text);
+  }
+}
+
+.connection-panel__hint {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--fc-text-muted);
+}
+
+.format-list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dial-row-gap);
+}
+
+.format-list button {
+  width: 100%;
+  text-align: left;
+  height: var(--dial-row-height);
+  padding: 0 12px;
+  border-radius: var(--dial-radius);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--dial-text-label);
+  background: var(--dial-surface);
+  border: 1px solid transparent;
+  transition:
+    background-color var(--duration-hover) var(--ease-out),
+    color var(--duration-hover) var(--ease-out),
+    border-color var(--duration-hover) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.format-list button:active {
+  transform: scale(0.97);
+}
+
+.format-list button.is-active {
+  background: var(--dial-surface-hover);
+  color: var(--dial-text-root);
+  border-color: var(--dial-border);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .format-list button:hover {
+    background: var(--dial-surface-hover);
+    color: var(--dial-text-root);
+  }
+}
+
+.connection-panel label {
+  display: block;
+  font-size: 11px;
+  color: var(--fc-text-subtle);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.connection-panel .size-hint {
+  margin: 8px 0 10px;
+  font-size: 12px;
+  color: var(--fc-text-muted);
+}
+
+.connection-panel .actions {
+  display: flex;
+  gap: var(--dial-row-gap);
+  margin-top: 0;
+}
+
+.connection-panel .actions button {
+  flex: 1;
+  height: var(--dial-row-height);
+  border-radius: var(--fc-radius);
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--fc-text-muted);
+  background: var(--fc-row);
+  border: 1px solid var(--fc-border);
+  transition:
+    background-color var(--duration-hover) var(--ease-out),
+    color var(--duration-hover) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.connection-panel .actions button:active {
+  transform: scale(0.97);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .connection-panel .actions button:hover {
+    background: var(--fc-surface-hover);
+    color: var(--fc-text);
+  }
+}
+
+.connection-panel .actions button.primary {
+  background: var(--fc-text);
+  color: var(--fc-bg);
+  border-color: transparent;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .connection-panel .actions button.primary:hover {
+    opacity: 0.92;
+    color: var(--fc-bg);
+    background: var(--fc-text);
+  }
+}
+
+.connection-panel .dial-host {
+  min-height: 0;
+  margin: 0 0 4px;
+}
+
+.connection-panel .dial-host .dk-root,
+.connection-panel .dial-host .dialkit-root,
+.connection-panel .dial-host [class*='DialRoot'] {
+  position: relative !important;
+  inset: auto !important;
+  width: 100% !important;
+  box-shadow: none !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+/* Flatten Dialkit’s own panel chrome — we already provide the outer shell + title. */
+.connection-panel .dial-host--no-versions .dialkit-panel,
+.connection-panel .dial-host--no-versions .dialkit-panel-wrapper,
+.connection-panel .dial-host--no-versions .dialkit-panel-inline {
+  position: static !important;
+  width: 100% !important;
+  max-height: none !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+.connection-panel .dial-host--no-versions .dialkit-panel-inner {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+/* Collapse Dialkit section header + versions/clipboard toolbar (source of the gap). */
+.connection-panel .dial-host--no-versions .dialkit-panel-header,
+.connection-panel .dial-host--no-versions .dialkit-folder-section > .dialkit-folder-header,
+.connection-panel .dial-host--no-versions .dialkit-panel-section-toolbar-clip,
+.connection-panel .dial-host--no-versions .dialkit-panel-section-toolbar,
+.connection-panel .dial-host--no-versions .dialkit-panel-toolbar,
+.connection-panel .dial-host--no-versions .dialkit-preset-manager,
+.connection-panel .dial-host--no-versions .dialkit-toolbar-copy,
+.connection-panel .dial-host--no-versions .dialkit-folder-copy,
+.connection-panel .dial-host--no-versions button[title='Copy parameters'],
+.connection-panel .dial-host--no-versions button[aria-label='Copy parameters'],
+.connection-panel .dial-host--no-versions button[aria-label='Copied parameters'],
+.connection-panel .dial-host--no-versions .dialkit-toolbar-add.dialkit-toolbar-primary {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  overflow: hidden !important;
+}
+
+.connection-panel .dial-host--no-versions .dialkit-folder-section {
+  --dial-section-header-height: 0px;
+  --dial-panel-header-height: 0px;
+}
+
+.connection-panel .dial-host--no-versions .dialkit-folder-root > .dialkit-folder-content > .dialkit-folder-inner,
+.connection-panel .dial-host--no-versions .dialkit-folder-inner {
+  padding: 0 !important;
+  gap: var(--dial-row-gap) !important;
+}
+
+.connection-panel .dial-host--no-versions .dialkit-folder-content {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.draft-wire {
+  pointer-events: none;
+}
+
+.help-popover {
+  position: absolute;
+  bottom: 72px;
+  left: 20px;
+  z-index: 25;
+  width: min(320px, calc(100vw - 40px));
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  border-radius: var(--fc-radius);
+  padding: 14px 16px;
+  box-shadow: var(--fc-chrome-shadow);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--fc-text-muted);
+}
+
+.help-popover strong {
+  color: var(--fc-text);
+  font-weight: 560;
+}
+
+.empty-hint {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  z-index: 5;
+  color: var(--fc-text-muted);
+  font-size: 14px;
+  text-align: center;
+  padding: 24px;
+}
+
+.empty-hint span {
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  border-radius: var(--fc-radius);
+  padding: 10px 16px;
+}
