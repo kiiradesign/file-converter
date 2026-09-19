@@ -22,9 +22,9 @@ Most converters are upload → wait → download, with no sense of history. Here
 - **Add files or an entire folder** — double-click → Files / Folder chooser; Shift-double-click → folder picker; drag-and-drop folders
 - **Formats that actually encode in-browser:** PNG, JPG, WEBP, AVIF, GIF, BMP, PDF  
   (HEIC encode deferred — no solid in-browser encoder yet)
-- Source format listed **first** in the convert list (re-encode / same-type)
-- **Quality** and **Resolution** sliders (Dialkit); Adjust flow confirms with **Compress**
-- **Adjust** creates a new chained result (never mutates the source)
+- Convert list shows **other formats only** (same-format re-encode stays on **Compress**)
+- **Quality** and **Resolution** sliders (Dialkit); convert panel titled **Convert to JPG** (etc.)
+- **Compress** creates a new chained same-format result (never mutates the source)
 - **Save** downloads a file; folder Save zips contents
 - Folder drill-in with breadcrumb back navigation
 - Dark / light chrome (Geist-like tokens)
@@ -38,9 +38,9 @@ Most converters are upload → wait → download, with no sense of history. Here
    - Double-click empty canvas → choose **Files** or **Folder**
    - Or **drop** files/folders onto the canvas
    - Or **Shift-double-click** to open the folder picker directly
-2. Hover a file → click **`+`** to convert to another format (or the same format to re-encode).
+2. Hover a file → click **`+`** to convert to another format (source format is not listed).
 3. Pick a format, tune quality / resolution, click **Convert**.
-4. Hover a result → **Adjust** to compress further (same type) → **Compress**; or **Save** to download.
+4. Hover a result → **Compress** to re-encode further (same type); or **Save** to download.
 5. Double-click / click a **folder** node to drill in; use the breadcrumb to go back.
 
 That's it.

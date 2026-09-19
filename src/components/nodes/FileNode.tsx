@@ -107,7 +107,7 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
             }}
           >
             <Pencil size={14} strokeWidth={1.75} />
-            Adjust
+            Compress
             <ChevronDown size={14} strokeWidth={1.75} />
           </button>
           <span className="divider" aria-hidden />

@@ -168,8 +168,8 @@ export function ConnectionPanel() {
             )}
             <h3>
               {draft.mode === 'adjust'
-                ? 'Adjust'
-                : `Convert · ${formatLabel(draft.settings.format)}`}
+                ? `Compress ${formatLabel(draft.settings.format)}`
+                : `Convert to ${formatLabel(draft.settings.format)}`}
             </h3>
           </div>
 

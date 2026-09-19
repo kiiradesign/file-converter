@@ -77,10 +77,9 @@ export function encodeFormatFromExtension(ext: string): ConvertFormat | null {
 }
 
 /**
- * Compatible encode targets for a source.
- * Source’s own format is listed first when we can encode it (re-encode / same type),
- * then the remaining web encode formats. Never lists formats we cannot encode.
- * HEIC is decode-limited and never appears as a target.
+ * Compatible encode targets for a source (other formats only).
+ * Same-format re-encode stays on the Compress / Adjust flow — do not list
+ * the source’s own format here. HEIC is decode-limited and never a target.
  */
 export function compatibleTargets(
   sourceExt: string,
@@ -90,11 +89,7 @@ export function compatibleTargets(
     return []
   }
   const src = encodeFormatFromExtension(sourceExt)
-  const rest = available.filter((f) => f !== src)
-  if (src && available.includes(src)) {
-    return [src, ...rest]
-  }
-  return rest.length ? rest : [...available]
+  return available.filter((f) => f !== src)
 }
 
 export function outputMime(format: ConvertFormat): string {
