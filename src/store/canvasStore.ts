@@ -48,7 +48,7 @@ export type FileNodeData = {
   settings?: ConvertSettings
   jobStatus?: 'idle' | 'running' | 'done' | 'error'
   jobProgress?: number
-  /** True while the 1s halftone reveal should play (cleared when wave finishes). */
+  /** True while the conversion dither wave should play (cleared when wave finishes). */
   conversionWavePending?: boolean
   sourceNodeId?: string
 }

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import {
   BLOCK_WAVE,
+  CANVAS_DOT_GAP_PX,
   DITHER_MAX_PIXEL_COUNT,
   IMAGE_DITHERING,
   blockGridDimensions,
@@ -48,7 +49,12 @@ function applyWaveMatrices(
   worldW: number,
   worldH: number,
   waveT: number,
+  cardHeightPx: number,
 ) {
+  const dotPeriodRows = Math.max(
+    4,
+    cardHeightPx / CANVAS_DOT_GAP_PX,
+  )
   const cellW = worldW / cols
   const cellH = worldH / rows
   const dummy = new THREE.Object3D()
@@ -58,7 +64,12 @@ function applyWaveMatrices(
       const yNorm = (row + 0.5) / rows
       const d = yNorm - waveT
       const band = BLOCK_WAVE.band
-      const influence = Math.exp(-(d * d) / (2 * band * band))
+      let influence = Math.exp(-(d * d) / (2 * band * band))
+      const rhythm =
+        1 +
+        BLOCK_WAVE.rhythmStrength *
+          Math.sin((row / dotPeriodRows) * Math.PI * 2)
+      influence *= rhythm
 
       const gap = influence * BLOCK_WAVE.gapPeak
       const cx = -worldW / 2 + (col + 0.5) * cellW
@@ -223,7 +234,7 @@ export function DitherBlockWaveWebGL({
 
       const mesh = new THREE.InstancedMesh(geometry, material, cols * rows)
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
-      applyWaveMatrices(mesh, cols, rows, worldW, worldH, 0)
+      applyWaveMatrices(mesh, cols, rows, worldW, worldH, 0, boxH)
 
       scene.add(mesh)
 
@@ -277,8 +288,9 @@ export function DitherBlockWaveWebGL({
       t.worldW,
       t.worldH,
       waveT,
+      boxH,
     )
-  }, [waveT])
+  }, [waveT, boxH])
 
   useEffect(() => {
     const t = threeRef.current
