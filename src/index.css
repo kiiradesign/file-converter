@@ -110,8 +110,9 @@
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-out-soft: cubic-bezier(0.175, 0.885, 0.32, 1.1);
   --duration-fast: 140ms;
-  --duration-hover: 160ms;
+  --duration-hover: 280ms;
   --duration-theme: 260ms;
+  --fc-text-title: 32px;
   color-scheme: dark;
 }
 
@@ -266,7 +267,7 @@ button {
   z-index: 20;
   top: 20px;
   left: 20px;
-  width: min(280px, calc(100vw - 100px));
+  width: min(360px, calc(100vw - 100px));
   pointer-events: none;
   background: none;
   border: none;
@@ -276,10 +277,10 @@ button {
 
 .chrome-title h1 {
   margin: 0 0 6px;
-  font-size: 18px;
+  font-size: var(--fc-text-title);
   font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
   color: var(--fc-text);
 }
 
@@ -501,7 +502,7 @@ button {
 .file-node__card canvas {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
   pointer-events: none;
   border-radius: var(--fc-radius);
@@ -518,7 +519,7 @@ button {
 .file-node__preview-img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   object-position: center;
   display: block;
   /* Prefer crisp downscale from full-res source; never invent blur. */

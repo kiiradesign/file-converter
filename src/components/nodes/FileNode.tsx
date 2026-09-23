@@ -6,10 +6,15 @@ import { PixelationPreview } from '../PixelationPreview'
 
 const FALLBACK_W = 168
 const FALLBACK_H = 210
+/** Longest edge of the preview card in flow px. */
 const MAX_EDGE = 240
-const MIN_EDGE = 96
+/** Prefer at least this on the long edge when the photo is tiny. */
+const MIN_LONG_EDGE = 96
 
-/** Size the preview card to the image aspect; non-images keep a default portrait. */
+/**
+ * Size the preview card to the photo’s aspect ratio.
+ * Fits inside a MAX_EDGE square without distorting or forcing a min on the short edge.
+ */
 export function previewCardSize(
   width?: number,
   height?: number,
@@ -21,31 +26,21 @@ export function previewCardSize(
   let w: number
   let h: number
   if (aspect >= 1) {
-    w = Math.min(MAX_EDGE, Math.max(MIN_EDGE, FALLBACK_W))
-    h = Math.round(w / aspect)
-    if (h < MIN_EDGE) {
-      h = MIN_EDGE
-      w = Math.round(h * aspect)
-    }
-  } else {
-    h = Math.min(MAX_EDGE, Math.max(MIN_EDGE, FALLBACK_H))
-    w = Math.round(h * aspect)
-    if (w < MIN_EDGE) {
-      w = MIN_EDGE
-      h = Math.round(w / aspect)
-    }
-  }
-  if (w > MAX_EDGE) {
     w = MAX_EDGE
-    h = Math.round(w / aspect)
-  }
-  if (h > MAX_EDGE) {
+    h = w / aspect
+  } else {
     h = MAX_EDGE
-    w = Math.round(h * aspect)
+    w = h * aspect
+  }
+  const long = Math.max(w, h)
+  if (long < MIN_LONG_EDGE) {
+    const s = MIN_LONG_EDGE / long
+    w *= s
+    h *= s
   }
   return {
-    width: Math.max(MIN_EDGE, Math.round(w)),
-    height: Math.max(MIN_EDGE, Math.round(h)),
+    width: Math.max(1, Math.round(w)),
+    height: Math.max(1, Math.round(h)),
   }
 }
 
@@ -56,6 +51,7 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
   const startConnect = useCanvasStore((s) => s.startConnect)
   const startAdjust = useCanvasStore((s) => s.startAdjust)
   const saveNode = useCanvasStore((s) => s.saveNode)
+  const setFileDimensions = useCanvasStore((s) => s.setFileDimensions)
   const [hovered, setHovered] = useState(false)
 
   const counter = 1 / Math.max(zoom, 0.01)
@@ -71,6 +67,14 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
   // ~36–40px toolbar + ~10–12px breath above the card (bridge padding is hit-area only).
   const toolbarSpace = Math.ceil(52 * Math.min(counter, 2.5))
 
+  const onNaturalSize = useCallback(
+    (w: number, h: number) => {
+      if (!file) return
+      if (file.width === w && file.height === h) return
+      setFileDimensions(file.id, w, h)
+    },
+    [file, setFileDimensions],
+  )
   const onPlus = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
@@ -156,6 +160,7 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
                 (data.jobProgress ?? 0) < 1 &&
                 data.jobStatus !== 'error')
             }
+            onNaturalSize={onNaturalSize}
           />
         </div>
         <Handle type="target" position={Position.Left} id="in" />

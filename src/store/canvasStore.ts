@@ -118,6 +118,8 @@ interface CanvasState {
   confirmDraft: () => Promise<void>
 
   saveNode: (nodeId: string) => Promise<void>
+  /** Patch intrinsic pixel size once the browser (or HEIC decode) reports it. */
+  setFileDimensions: (fileId: string, width: number, height: number) => void
 }
 
 function uid(prefix: string) {
@@ -478,6 +480,23 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     }
     collect(folder, '')
     await zipFiles(items, `${folder.name}.zip`)
+  },
+
+  setFileDimensions: (fileId, width, height) => {
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width < 1 || height < 1) {
+      return
+    }
+    set((s) => {
+      const file = s.files[fileId]
+      if (!file) return s
+      if (file.width === width && file.height === height) return s
+      return {
+        files: {
+          ...s.files,
+          [fileId]: { ...file, width, height },
+        },
+      }
+    })
   },
 }))
 

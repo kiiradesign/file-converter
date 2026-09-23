@@ -7,6 +7,8 @@ interface Props {
   active: boolean
   /** Optional mime — PDFs etc. skip bitmap preview. */
   mimeType?: string
+  /** Fired once with the decoded intrinsic size (for aspect-correct cards). */
+  onNaturalSize?: (width: number, height: number) => void
 }
 
 /**
@@ -21,6 +23,7 @@ export function PixelationPreview({
   progress,
   active,
   mimeType,
+  onNaturalSize,
 }: Props) {
   const isBitmap =
     !mimeType ||
@@ -50,6 +53,12 @@ export function PixelationPreview({
         draggable={false}
         decoding="async"
         className="file-node__preview-img"
+        onLoad={(e) => {
+          const img = e.currentTarget
+          if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+            onNaturalSize?.(img.naturalWidth, img.naturalHeight)
+          }
+        }}
       />
       {showDissolve && (
         <PixelationOverlay src={src} width={width} height={height} progress={progress} />
