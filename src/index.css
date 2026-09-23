@@ -113,6 +113,7 @@
   --duration-hover: 280ms;
   --duration-theme: 260ms;
   --fc-text-title: 32px;
+  --fc-text-body: 14px;
   color-scheme: dark;
 }
 
@@ -286,7 +287,7 @@ button {
 
 .chrome-title p {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--fc-text-body);
   line-height: 1.45;
   color: var(--fc-text-muted);
   font-weight: 400;
