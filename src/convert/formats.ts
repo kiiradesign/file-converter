@@ -10,12 +10,13 @@ export const IMAGE_EXTENSIONS = new Set([
   'avif',
   'heic',
   'heif',
+  'svg',
   'pdf',
 ])
 
 /**
  * Formats we can actually encode in the browser today.
- * HEIC/HEIF encode is deferred (no viable in-browser encoder yet).
+ * HEIC/HEIF/SVG encode is deferred (decode-only sources).
  */
 export const WEB_ENCODE_FORMATS: ConvertFormat[] = [
   'png',
@@ -37,6 +38,7 @@ const MIME_BY_EXT: Record<string, string> = {
   avif: 'image/avif',
   heic: 'image/heic',
   heif: 'image/heif',
+  svg: 'image/svg+xml',
   pdf: 'application/pdf',
 }
 
@@ -63,10 +65,19 @@ export function isImageExtension(ext: string): boolean {
 
 export function canDecodeInBrowser(ext: string): boolean {
   const e = ext.toLowerCase()
-  // Native <img> for common formats; HEIC/HEIF via libheif WASM (decode-only).
-  return ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'avif', 'heic', 'heif'].includes(
-    e,
-  )
+  // Native <img> / canvas for common formats; HEIC via libheif; SVG rasterized.
+  return [
+    'png',
+    'jpg',
+    'jpeg',
+    'webp',
+    'gif',
+    'bmp',
+    'avif',
+    'heic',
+    'heif',
+    'svg',
+  ].includes(e)
 }
 
 /** Map a file extension to an encode format when we can produce it. */
@@ -81,7 +92,7 @@ export function encodeFormatFromExtension(ext: string): ConvertFormat | null {
 /**
  * Compatible encode targets for a source (other formats only).
  * Same-format re-encode stays on the Compress / Adjust flow — do not list
- * the source’s own format here. HEIC/HEIF decode is supported; encode is not.
+ * the source’s own format here. HEIC/HEIF/SVG decode is supported; encode is not.
  */
 export function compatibleTargets(
   sourceExt: string,

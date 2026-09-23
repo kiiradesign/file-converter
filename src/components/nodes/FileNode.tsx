@@ -1,5 +1,5 @@
 import { Handle, Position, useViewport, type NodeProps } from '@xyflow/react'
-import { Download, Image as ImageIcon, Minimize2, Plus } from 'lucide-react'
+import { Download, Minimize2, Plus } from 'lucide-react'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useCanvasStore, type FileNodeData } from '../../store/canvasStore'
 import { PixelationPreview } from '../PixelationPreview'
@@ -48,6 +48,8 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
   const { zoom } = useViewport()
   const file = useCanvasStore((s) => s.files[data.fileId])
   const draftOpen = useCanvasStore((s) => s.draft != null)
+  const folderStack = useCanvasStore((s) => s.folderStack)
+  const nodes = useCanvasStore((s) => s.nodes)
   const startConnect = useCanvasStore((s) => s.startConnect)
   const startAdjust = useCanvasStore((s) => s.startAdjust)
   const saveNode = useCanvasStore((s) => s.saveNode)
@@ -58,7 +60,19 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
   const running = data.jobStatus === 'running'
   const src = file?.previewUrl || file?.objectUrl || null
   const showHoverChrome = hovered && !draftOpen
-  const showSave = data.isResult
+
+  // Save on result nodes and on files inside a converted result folder.
+  const currentFolderId =
+    folderStack.length > 0 ? folderStack[folderStack.length - 1] : null
+  const insideResultFolder =
+    currentFolderId != null &&
+    nodes.some(
+      (n) =>
+        n.data.kind === 'folder' &&
+        n.data.folderId === currentFolderId &&
+        n.data.isResult,
+    )
+  const showSave = data.isResult || insideResultFolder
 
   const card = useMemo(
     () => previewCardSize(file?.width, file?.height),
@@ -70,7 +84,7 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
   const onNaturalSize = useCallback(
     (w: number, h: number) => {
       if (!file) return
-      // Keep HEIC intrinsic size from ingest; preview JPEG may be downscaled.
+      // Keep HEIC/SVG intrinsic size from ingest; preview may be downscaled.
       if (file.width && file.height) return
       setFileDimensions(file.id, w, h)
     },
@@ -185,8 +199,7 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
         className="file-node__label"
         style={{ transform: `scale(${counter})` }}
       >
-        <ImageIcon size={14} strokeWidth={1.75} />
-        <span>{data.label}</span>
+        {data.label}
       </div>
     </div>
   )

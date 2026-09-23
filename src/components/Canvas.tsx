@@ -283,7 +283,7 @@ function CanvasInner() {
         ref={fileInputRef}
         type="file"
         multiple
-        accept="image/*,.png,.jpg,.jpeg,.webp,.gif,.bmp,.avif,.heic,.heif,.pdf"
+        accept="image/*,.png,.jpg,.jpeg,.webp,.gif,.bmp,.avif,.heic,.heif,.svg,.pdf"
         className="fc-hidden-file-input"
         onChange={onFilesSelected}
       />

@@ -5,6 +5,7 @@ import { encodeBmp } from './bmp'
 import { encodeGif } from './gif'
 import { isHeicExtension, loadHeicAsImage } from './heic'
 import { encodePdf } from './pdf'
+import { isSvgExtension, loadSvgAsImage } from './svg'
 
 function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -15,13 +16,16 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   })
 }
 
-/** Decode any supported source — HEIC/HEIF via libheif, else browser <img>. */
+/** Decode any supported source — HEIC/SVG via helpers, else browser <img>. */
 async function loadDecodedImage(
   url: string,
   sourceExt?: string,
 ): Promise<HTMLImageElement> {
   if (sourceExt && isHeicExtension(sourceExt)) {
     return loadHeicAsImage(url)
+  }
+  if (sourceExt && isSvgExtension(sourceExt)) {
+    return loadSvgAsImage(url)
   }
   return loadImage(url)
 }

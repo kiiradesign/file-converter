@@ -7,6 +7,7 @@ import {
 } from '../convert/formats'
 import { heicToPreview, isHeicExtension } from '../convert/web/heic'
 import { probeImageSize } from '../convert/web/image'
+import { isSvgExtension, svgToPreview } from '../convert/web/svg'
 import type { FileEntry, FolderEntry } from '../types'
 
 function uid(prefix = 'id'): string {
@@ -52,6 +53,19 @@ export async function createFileEntry(file: File, id = uid('file')): Promise<Fil
       entry.height = preview.height
     } catch (err) {
       console.error('HEIC preview decode failed', err)
+    }
+    return entry
+  }
+
+  if (isSvgExtension(extension) || file.type === 'image/svg+xml') {
+    try {
+      const preview = await svgToPreview(file)
+      entry.previewUrl = preview.previewUrl
+      entry.width = preview.width
+      entry.height = preview.height
+      entry.mimeType = entry.mimeType || 'image/svg+xml'
+    } catch (err) {
+      console.error('SVG preview decode failed', err)
     }
     return entry
   }
@@ -112,7 +126,7 @@ export async function pickFiles(): Promise<File[]> {
   return openFileInput((input) => {
     input.multiple = true
     input.accept =
-      'image/*,.png,.jpg,.jpeg,.webp,.gif,.bmp,.avif,.heic,.heif,.pdf'
+      'image/*,.png,.jpg,.jpeg,.webp,.gif,.bmp,.avif,.heic,.heif,.svg,.pdf'
   })
 }
 
