@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@jsquash/avif": "^2.1.1",
+    "@paper-design/shaders-react": "^0.0.81",
     "@xyflow/react": "^12.11.6",
     "dialkit": "^2.0.2",
     "geist": "^1.7.2",

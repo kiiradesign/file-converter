@@ -519,13 +519,19 @@ button {
   user-select: none;
 }
 
-.file-node__preview-dissolve {
+.file-node__preview-halftone {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
-  image-rendering: pixelated;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.file-node__preview-halftone > div {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .file-node__placeholder {

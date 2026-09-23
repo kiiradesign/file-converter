@@ -528,6 +528,9 @@ async function convertFileNode(
     canvasId,
   )
 
+  const sourcePreview =
+    sourceFile.previewUrl || sourceFile.objectUrl || undefined
+
   const placeholder: FileEntry = {
     id: resultFileId,
     name: resultName,
@@ -535,6 +538,7 @@ async function convertFileNode(
     mimeType: 'application/octet-stream',
     blob: new Blob(),
     objectUrl: '',
+    previewUrl: sourcePreview,
     size: 0,
     width: sourceFile.width,
     height: sourceFile.height,

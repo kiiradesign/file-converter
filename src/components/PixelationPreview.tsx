@@ -1,3 +1,13 @@
+import { HalftoneCmyk } from '@paper-design/shaders-react'
+import { animate } from 'motion'
+import { useEffect, useMemo, useState } from 'react'
+import {
+  HALFTONE_CMYK,
+  HALFTONE_MAX_PIXEL_COUNT,
+  WAVE_DURATION_S,
+  WAVE_SOFTNESS,
+} from './pixelationWaveConfig'
+
 interface Props {
   src: string | null
   /** Display box size (CSS); source image stays full-resolution via <img>. */
@@ -12,9 +22,7 @@ interface Props {
 }
 
 /**
- * Node preview: always prefer the full-resolution object URL in an <img>.
- * Pixelation is only a transient overlay while a conversion job is running;
- * it must never permanently replace the source with a tiny bitmap.
+ * Node preview: full-resolution <img> underneath; CMYK halftone wave overlay while converting.
  */
 export function PixelationPreview({
   src,
@@ -42,11 +50,10 @@ export function PixelationPreview({
     )
   }
 
-  const showDissolve = active && progress < 1
+  const showWave = active && progress < 1
 
   return (
     <div className="file-node__preview" style={{ width: '100%', height: '100%' }}>
-      {/* Full-res source — CSS sizes the card; browser decodes native pixels. */}
       <img
         src={src}
         alt=""
@@ -60,63 +67,73 @@ export function PixelationPreview({
           }
         }}
       />
-      {showDissolve && (
-        <PixelationOverlay src={src} width={width} height={height} progress={progress} />
+      {showWave && (
+        <HalftoneWaveOverlay
+          src={src}
+          width={width}
+          height={height}
+          jobProgress={progress}
+        />
       )}
     </div>
   )
 }
 
-/** Transient conversion dissolve drawn on a small overlay canvas only. */
-function PixelationOverlay({
+function HalftoneWaveOverlay({
   src,
   width,
   height,
-  progress,
+  jobProgress,
 }: {
   src: string
   width: number
   height: number
-  progress: number
+  jobProgress: number
 }) {
-  // Overlay is decorative; keep it cheap. The sharp <img> sits underneath.
-  const canvasW = Math.max(1, Math.round(width))
-  const canvasH = Math.max(1, Math.round(height))
+  const [waveT, setWaveT] = useState(0)
+  const reducedMotion = useMemo(
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    [],
+  )
+
+  useEffect(() => {
+    setWaveT(0)
+    if (reducedMotion) {
+      setWaveT(1)
+      return
+    }
+    const ctrl = animate(0, 1, {
+      duration: WAVE_DURATION_S,
+      ease: [0.35, 0, 0.25, 1],
+      onUpdate: (v) => setWaveT(v),
+    })
+    return () => ctrl.stop()
+  }, [src, reducedMotion])
+
+  const reveal = Math.min(1, Math.max(waveT, jobProgress))
+  const softPct = WAVE_SOFTNESS * 100
+  const frontPct = reveal * 100
+  const maskImage = `linear-gradient(to bottom, transparent 0%, transparent ${Math.max(0, frontPct - softPct)}%, black ${Math.min(100, frontPct + softPct)}%, black 100%)`
 
   return (
-    <canvas
-      className="file-node__preview-dissolve"
-      width={canvasW}
-      height={canvasH}
-      ref={(canvas) => {
-        if (!canvas) return
-        const img = new Image()
-        img.onload = () => {
-          const ctx = canvas.getContext('2d')
-          if (!ctx) return
-          const p = Math.min(1, Math.max(0, progress))
-          const block = Math.max(1, Math.round(32 * (1 - p) + 1 * p))
-          const w = canvas.width
-          const h = canvas.height
-          ctx.imageSmoothingEnabled = false
-          ctx.clearRect(0, 0, w, h)
-          const tw = Math.max(1, Math.ceil(w / block))
-          const th = Math.max(1, Math.ceil(h / block))
-          const tmp = document.createElement('canvas')
-          tmp.width = tw
-          tmp.height = th
-          const tctx = tmp.getContext('2d')
-          if (!tctx) return
-          tctx.imageSmoothingEnabled = false
-          tctx.drawImage(img, 0, 0, tw, th)
-          ctx.drawImage(tmp, 0, 0, tw, th, 0, 0, w, h)
-          ctx.globalAlpha = Math.max(0, 1 - p)
-          // Fade overlay as conversion completes; full-res img already underneath.
-          ctx.fillStyle = 'transparent'
-        }
-        img.src = src
+    <div
+      className="file-node__preview-halftone"
+      style={{
+        WebkitMaskImage: maskImage,
+        maskImage,
       }}
-      style={{ opacity: Math.max(0, 1 - progress) }}
-    />
+    >
+      <HalftoneCmyk
+        image={src}
+        width={Math.max(1, Math.round(width))}
+        height={Math.max(1, Math.round(height))}
+        maxPixelCount={HALFTONE_MAX_PIXEL_COUNT}
+        speed={0}
+        frame={0}
+        {...HALFTONE_CMYK}
+      />
+    </div>
   )
 }

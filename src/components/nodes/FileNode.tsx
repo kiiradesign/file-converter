@@ -58,7 +58,8 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
 
   const counter = 1 / Math.max(zoom, 0.01)
   const running = data.jobStatus === 'running'
-  const src = file?.previewUrl || file?.objectUrl || null
+  /** Prefer output blob URL when present; during conversion use source preview on placeholder. */
+  const src = file?.objectUrl || file?.previewUrl || null
   const showHoverChrome = hovered && !draftOpen
 
   // Save on result nodes and on files inside a converted result folder.
