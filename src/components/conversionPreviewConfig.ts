@@ -1,11 +1,11 @@
 /** Duration of the fluted-glass reveal (seconds). */
-export const WAVE_DURATION_S = 2
+export const WAVE_DURATION_S = 3.25
 
 /** Motion easing for reveal progress (smooth decel). */
 export const WAVE_EASE: [number, number, number, number] = [0.42, 0, 0.18, 1]
 
 /** Crossfade from shader preview to final output after reveal + blob ready. */
-export const REVEAL_CROSSFADE_S = 0.5
+export const REVEAL_CROSSFADE_S = 0.65
 
 /** Dark canvas match when CSS var is unavailable (SSR / first paint). */
 export const PREVIEW_COLOR_BACK_DARK = '#0a0a0a'

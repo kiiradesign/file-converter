@@ -56,6 +56,8 @@ export type FileNodeData = {
   jobProgress?: number
   /** True while the conversion dither wave should play (cleared when wave finishes). */
   conversionWavePending?: boolean
+  /** Bumped by debug replay to restart preview animation without re-encoding. */
+  conversionWaveReplayKey?: number
   sourceNodeId?: string
 }
 
@@ -131,6 +133,8 @@ interface CanvasState {
   /** Patch intrinsic pixel size once the browser (or HEIC decode) reports it. */
   setFileDimensions: (fileId: string, width: number, height: number) => void
   finishConversionWave: (nodeId: string) => void
+  /** TEMP debug: replay fluted-glass preview on all finished result file nodes. */
+  replayConversionPreviews: () => void
 }
 
 function uid(prefix: string) {
@@ -525,6 +529,28 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
           ? { ...n, data: { ...n.data, conversionWavePending: false } }
           : n,
       ),
+    }))
+  },
+
+  // TEMP debug UX — remove when preview replay is no longer needed.
+  replayConversionPreviews: () => {
+    set((s) => ({
+      nodes: s.nodes.map((n) => {
+        if (n.data.kind !== 'file' || !n.data.isResult) return n
+        if (n.data.jobStatus !== 'done') return n
+        const file = s.files[n.data.fileId]
+        if (!file?.objectUrl || (file.size ?? 0) <= 0) return n
+        const thumb = file.previewUrl ?? file.objectUrl
+        if (!thumb) return n
+        return {
+          ...n,
+          data: {
+            ...n.data,
+            conversionWavePending: true,
+            conversionWaveReplayKey: (n.data.conversionWaveReplayKey ?? 0) + 1,
+          },
+        }
+      }),
     }))
   },
 }))

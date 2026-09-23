@@ -305,6 +305,39 @@ button {
   font-weight: 400;
 }
 
+.chrome-replay {
+  position: absolute;
+  z-index: 20;
+  bottom: 20px;
+  left: 64px;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  color: var(--fc-text-muted);
+  opacity: 0.72;
+  cursor: pointer;
+  transition:
+    color var(--duration-hover) var(--ease-out),
+    opacity var(--duration-hover) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.chrome-replay:active {
+  transform: scale(0.94);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .chrome-replay:hover {
+    color: var(--fc-text);
+    opacity: 1;
+  }
+}
+
 .chrome-theme {
   position: absolute;
   z-index: 20;

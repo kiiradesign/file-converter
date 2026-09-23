@@ -147,6 +147,7 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
             isResult={data.isResult}
             jobStatus={data.jobStatus}
             conversionWavePending={data.conversionWavePending}
+            conversionWaveReplayKey={data.conversionWaveReplayKey}
             onWaveComplete={onWaveComplete}
             onNaturalSize={onNaturalSize}
           />

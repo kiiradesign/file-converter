@@ -42,6 +42,8 @@ interface Props {
   jobStatus?: 'idle' | 'running' | 'done' | 'error'
   /** When true, play the fluted-glass reveal (duration from config; independent of encode). */
   conversionWavePending?: boolean
+  /** Incremented to restart the wave without toggling pending (debug replay). */
+  conversionWaveReplayKey?: number
   onWaveComplete?: () => void
   onNaturalSize?: (width: number, height: number) => void
 }
@@ -60,6 +62,7 @@ export function ConversionPreview({
   isResult,
   jobStatus,
   conversionWavePending,
+  conversionWaveReplayKey,
   onWaveComplete,
   onNaturalSize,
 }: Props) {
@@ -96,6 +99,7 @@ export function ConversionPreview({
       waveEligible={waveEligible}
       width={width}
       height={height}
+      conversionWaveReplayKey={conversionWaveReplayKey}
       onNaturalSize={onNaturalSize}
       onWaveComplete={onWaveComplete}
     />
@@ -107,6 +111,7 @@ function ConversionPreviewImage({
   outputSrc,
   jobDone,
   waveEligible,
+  conversionWaveReplayKey,
   width,
   height,
   onNaturalSize,
@@ -116,6 +121,7 @@ function ConversionPreviewImage({
   outputSrc?: string | null
   jobDone: boolean
   waveEligible: boolean
+  conversionWaveReplayKey?: number
   width: number
   height: number
   onNaturalSize?: (width: number, height: number) => void
@@ -179,7 +185,7 @@ function ConversionPreviewImage({
       },
     })
     return () => ctrl.stop()
-  }, [waveEligible, reducedMotion])
+  }, [waveEligible, reducedMotion, conversionWaveReplayKey])
 
   const readyToReveal = waveFinished && jobDone && !!outputSrc
 
