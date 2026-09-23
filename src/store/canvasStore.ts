@@ -35,6 +35,7 @@ import type {
   FileEntry,
   FolderEntry,
 } from '../types'
+import { computeDefaultResultPosition } from '../lib/resultNodePlacement'
 import { DEFAULT_SETTINGS } from '../types'
 
 export type FileNodeData = {
@@ -444,16 +445,12 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const settings = { ...draft.settings }
     // Close the control panel immediately on Convert (file or folder).
     set({ draft: null })
-    // Place results to the right and slightly below so bezier edges curve
-    // instead of sitting on a flat horizontal line.
-    const offset = { x: 280, y: 56 }
-
     if (sourceNode.data.kind === 'folder') {
-      await convertFolder(get, set, sourceNode, settings, offset)
+      await convertFolder(get, set, sourceNode, settings)
       return
     }
 
-    await convertFileNode(get, set, sourceNode, settings, offset)
+    await convertFileNode(get, set, sourceNode, settings)
   },
 
   saveNode: async (nodeId) => {
@@ -524,7 +521,6 @@ async function convertFileNode(
   set: Set,
   sourceNode: AppNode,
   settings: ConvertSettings,
-  offset: XYPosition,
 ) {
   if (sourceNode.data.kind !== 'file') return
   const sourceFile = get().files[sourceNode.data.fileId]
@@ -557,6 +553,13 @@ async function convertFileNode(
     height: sourceFile.height,
   }
 
+  const resultPosition = computeDefaultResultPosition(
+    sourceNode,
+    get().nodes,
+    get().edges,
+    get().files,
+  )
+
   set((s) => ({
     files: { ...s.files, [resultFileId]: placeholder },
     nodes: [
@@ -564,10 +567,7 @@ async function convertFileNode(
       {
         id: resultNodeId,
         type: 'file',
-        position: {
-          x: sourceNode.position.x + offset.x,
-          y: sourceNode.position.y + offset.y,
-        },
+        position: resultPosition,
         data: {
           kind: 'file',
           fileId: resultFileId,
@@ -666,7 +666,6 @@ async function convertFolder(
   set: Set,
   sourceNode: AppNode,
   settings: ConvertSettings,
-  offset: XYPosition,
 ) {
   if (sourceNode.data.kind !== 'folder') return
   const sourceFolder = get().folders[sourceNode.data.folderId]
@@ -691,6 +690,13 @@ async function convertFolder(
     childFolderIds: [],
   }
 
+  const resultPosition = computeDefaultResultPosition(
+    sourceNode,
+    get().nodes,
+    get().edges,
+    get().files,
+  )
+
   set((s) => ({
     folders: { ...s.folders, [newFolderId]: newFolder },
     nodes: [
@@ -698,10 +704,7 @@ async function convertFolder(
       {
         id: resultNodeId,
         type: 'folder',
-        position: {
-          x: sourceNode.position.x + offset.x,
-          y: sourceNode.position.y + offset.y,
-        },
+        position: resultPosition,
         data: {
           kind: 'folder',
           folderId: newFolderId,
