@@ -56,7 +56,7 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
 
   const counter = 1 / Math.max(zoom, 0.01)
   const running = data.jobStatus === 'running'
-  const src = file?.objectUrl || null
+  const src = file?.previewUrl || file?.objectUrl || null
   const showHoverChrome = hovered && !draftOpen
   const showSave = data.isResult
 
@@ -70,7 +70,8 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
   const onNaturalSize = useCallback(
     (w: number, h: number) => {
       if (!file) return
-      if (file.width === w && file.height === h) return
+      // Keep HEIC intrinsic size from ingest; preview JPEG may be downscaled.
+      if (file.width && file.height) return
       setFileDimensions(file.id, w, h)
     },
     [file, setFileDimensions],

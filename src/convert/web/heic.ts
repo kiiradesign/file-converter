@@ -81,6 +81,64 @@ export async function decodeHeicToImageData(blob: Blob): Promise<ImageData> {
   return imageData
 }
 
+export type HeicPreview = {
+  /** Browser-displayable JPEG object URL (revoke when done). */
+  previewUrl: string
+  /** Intrinsic HEIC pixel size (not the downscaled preview). */
+  width: number
+  height: number
+}
+
+/**
+ * Decode HEIC/HEIF into a JPEG preview URL for <img> nodes.
+ * Caps the long edge so folder ingest stays memory-friendly.
+ */
+export async function heicToPreview(
+  blob: Blob,
+  maxEdge = 1280,
+): Promise<HeicPreview> {
+  const imageData = await decodeHeicToImageData(blob)
+  const width = imageData.width
+  const height = imageData.height
+
+  const full = document.createElement('canvas')
+  full.width = width
+  full.height = height
+  const fullCtx = full.getContext('2d')
+  if (!fullCtx) throw new Error('No 2d context')
+  fullCtx.putImageData(imageData, 0, 0)
+
+  const scale = Math.min(1, maxEdge / Math.max(width, height))
+  const pw = Math.max(1, Math.round(width * scale))
+  const ph = Math.max(1, Math.round(height * scale))
+
+  let out: HTMLCanvasElement = full
+  if (pw !== width || ph !== height) {
+    out = document.createElement('canvas')
+    out.width = pw
+    out.height = ph
+    const ctx = out.getContext('2d')
+    if (!ctx) throw new Error('No 2d context')
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
+    ctx.drawImage(full, 0, 0, pw, ph)
+  }
+
+  const previewBlob = await new Promise<Blob>((resolve, reject) => {
+    out.toBlob(
+      (b) => (b ? resolve(b) : reject(new Error('HEIC → JPEG preview failed'))),
+      'image/jpeg',
+      0.88,
+    )
+  })
+
+  return {
+    previewUrl: URL.createObjectURL(previewBlob),
+    width,
+    height,
+  }
+}
+
 /** Decode HEIC/HEIF from a blob URL into an HTMLImageElement via PNG re-encode. */
 export async function loadHeicAsImage(url: string): Promise<HTMLImageElement> {
   const response = await fetch(url)

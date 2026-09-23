@@ -17,7 +17,13 @@ export interface FileEntry {
   extension: string
   mimeType: string
   blob: Blob
+  /** Source blob URL (may be HEIC — not always displayable in <img>). */
   objectUrl: string
+  /**
+   * Browser-safe preview URL for node thumbnails.
+   * Set for HEIC/HEIF (JPEG decode); otherwise omit and use objectUrl.
+   */
+  previewUrl?: string
   size: number
   width?: number
   height?: number

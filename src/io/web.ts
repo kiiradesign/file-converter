@@ -5,6 +5,7 @@ import {
   mimeForExtension,
   normalizeExtension,
 } from '../convert/formats'
+import { heicToPreview, isHeicExtension } from '../convert/web/heic'
 import { probeImageSize } from '../convert/web/image'
 import type { FileEntry, FolderEntry } from '../types'
 
@@ -42,15 +43,24 @@ export async function createFileEntry(file: File, id = uid('file')): Promise<Fil
     size: file.size,
   }
 
+  if (isHeicExtension(extension)) {
+    // Browsers cannot paint HEIC in <img> — decode a JPEG preview once at ingest.
+    try {
+      const preview = await heicToPreview(file)
+      entry.previewUrl = preview.previewUrl
+      entry.width = preview.width
+      entry.height = preview.height
+    } catch (err) {
+      console.error('HEIC preview decode failed', err)
+    }
+    return entry
+  }
+
   if (
     file.type.startsWith('image/') ||
-    ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'avif', 'heic', 'heif'].includes(
-      extension,
-    )
+    ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'avif'].includes(extension)
   ) {
-    // HEIC decode is slower (WASM); allow a longer probe timeout.
-    const timeout = extension === 'heic' || extension === 'heif' ? 8000 : 2500
-    const size = await probeImageSizeTimed(objectUrl, extension, timeout)
+    const size = await probeImageSizeTimed(objectUrl, extension, 2500)
     if (size) {
       entry.width = size.width
       entry.height = size.height
@@ -62,6 +72,7 @@ export async function createFileEntry(file: File, id = uid('file')): Promise<Fil
 
 export function revokeFileEntry(entry: FileEntry) {
   URL.revokeObjectURL(entry.objectUrl)
+  if (entry.previewUrl) URL.revokeObjectURL(entry.previewUrl)
 }
 
 /**
