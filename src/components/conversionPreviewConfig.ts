@@ -8,7 +8,7 @@ export const WAVE_EASE: [number, number, number, number] = [0.42, 0, 0.18, 1]
  * Final handoff to output `<img>` only after shader params read clear and the job
  * finishes late (wave already done). Keep short — param tween does the heavy lifting.
  */
-export const REVEAL_CROSSFADE_S = 0.32
+export const REVEAL_CROSSFADE_S = 0.48
 
 /** Dark canvas match when CSS var is unavailable (SSR / first paint). */
 export const PREVIEW_COLOR_BACK_DARK = '#0a0a0a'
@@ -43,7 +43,7 @@ export const FLUTED_GLASS_LOAD = {
   colorHighlight: '#ffffff',
   shadows: 0.03,
   highlights: 0.008,
-  size: 0.74,
+  size: 0.9,
   shape: 'lines' as const,
   angle: 0,
   distortionShape: 'prism' as const,
@@ -81,11 +81,17 @@ function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t
 }
 
-/** 1 at progress 0 (max glass), 0 at progress 1 (clear). Smooth resolve across the wave. */
+/** 1 at progress 0 (max glass), 0 at progress 1 (clear). Long gentle tail in the last half. */
 export function glassAmountAtProgress(t: number): number {
   const u = Math.min(1, Math.max(0, t))
-  const eased = u * u * (3 - 2 * u)
-  return 1 - eased
+  if (u <= 0.42) {
+    const p = u / 0.42
+    const eased = p * p * (3 - 2 * p)
+    return 1 - eased * 0.38
+  }
+  const p = (u - 0.42) / 0.58
+  const tail = 1 - p * p * (3 - 2 * p)
+  return 0.62 * tail
 }
 
 /** 0 → 1 as glass clears; use for output layer when encode finishes during the wave. */
