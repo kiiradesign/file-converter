@@ -438,18 +438,18 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     }
 
     const settings = { ...draft.settings }
+    // Close the control panel immediately on Convert (file or folder).
+    set({ draft: null })
     // Place results to the right and slightly below so bezier edges curve
     // instead of sitting on a flat horizontal line.
     const offset = { x: 280, y: 56 }
 
     if (sourceNode.data.kind === 'folder') {
       await convertFolder(get, set, sourceNode, settings, offset)
-      set({ draft: null })
       return
     }
 
     await convertFileNode(get, set, sourceNode, settings, offset)
-    set({ draft: null })
   },
 
   saveNode: async (nodeId) => {
