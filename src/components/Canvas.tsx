@@ -15,7 +15,13 @@ import { FileNode } from './nodes/FileNode'
 import { FolderNode } from './nodes/FolderNode'
 import { ConnectionPanel } from './ConnectionPanel'
 import { AddChooser } from './AddChooser'
+import { previewCardSize } from '../lib/previewCardSize'
 import { useCanvasStore } from '../store/canvasStore'
+
+/** Default file card size — used to center empty-state imports on the viewport. */
+const DEFAULT_FILE_CARD = previewCardSize()
+/** Folder glyph + label (flow px), for centering empty-state folder picks. */
+const FOLDER_NODE_CENTER_OFFSET = { w: 96, h: 120 }
 
 const nodeTypes = {
   file: FileNode,
@@ -71,7 +77,9 @@ function CanvasInner() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)
   /** Flow position for the in-flight file/folder input pick. */
-  const pickPosRef = useRef<XYPosition>({ x: 200, y: 160 })
+  const pickPosRef = useRef<XYPosition>({ x: 0, y: 0 })
+  /** Recompute viewport center when the picker closes (empty-state ADD TO CANVAS). */
+  const pickAtViewportCenterRef = useRef(false)
   /** Floating double-click chooser only (dismissible). Empty-state is separate. */
   const [floatingAdd, setFloatingAdd] = useState<FloatingAdd | null>(null)
 
@@ -166,13 +174,51 @@ function CanvasInner() {
     [setZoom, settleDots],
   )
 
-  /** Center of the current viewport in flow coords (for empty-state picks). */
+  /** Screen center of the React Flow pane → flow coords. */
   const viewportCenterFlow = useCallback((): XYPosition => {
-    const el = wrapperRef.current
-    const w = el?.clientWidth ?? window.innerWidth
-    const h = el?.clientHeight ?? window.innerHeight
-    return screenToFlowPosition({ x: w / 2, y: h / 2 })
+    const pane =
+      wrapperRef.current?.querySelector<HTMLElement>('.react-flow') ??
+      wrapperRef.current
+    if (!pane) {
+      return screenToFlowPosition({
+        x: window.innerWidth / 2,
+        y: window.innerHeight / 2,
+      })
+    }
+    const rect = pane.getBoundingClientRect()
+    return screenToFlowPosition({
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+    })
   }, [screenToFlowPosition])
+
+  const spawnFlowForEmptyStateImport = useCallback(
+    (kind: 'file' | 'folder'): XYPosition => {
+      const center = viewportCenterFlow()
+      if (kind === 'file') {
+        return {
+          x: center.x - DEFAULT_FILE_CARD.width / 2,
+          y: center.y - DEFAULT_FILE_CARD.height / 2,
+        }
+      }
+      return {
+        x: center.x - FOLDER_NODE_CENTER_OFFSET.w / 2,
+        y: center.y - FOLDER_NODE_CENTER_OFFSET.h / 2,
+      }
+    },
+    [viewportCenterFlow],
+  )
+
+  const resolvePickPosition = useCallback(
+    (kind: 'file' | 'folder'): XYPosition => {
+      if (pickAtViewportCenterRef.current) {
+        pickAtViewportCenterRef.current = false
+        return spawnFlowForEmptyStateImport(kind)
+      }
+      return pickPosRef.current
+    },
+    [spawnFlowForEmptyStateImport],
+  )
 
   /** Click a DOM-resident input in the same user-gesture turn (no await). */
   const openFilesDialog = useCallback((flow: XYPosition) => {
@@ -232,26 +278,32 @@ function CanvasInner() {
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const list = Array.from(e.target.files ?? [])
       e.target.value = ''
-      if (!list.length) return
-      void addFilesAt(list, pickPosRef.current)
+      if (!list.length) {
+        pickAtViewportCenterRef.current = false
+        return
+      }
+      void addFilesAt(list, resolvePickPosition('file'))
     },
-    [addFilesAt],
+    [addFilesAt, resolvePickPosition],
   )
 
   const onFolderSelected = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const list = Array.from(e.target.files ?? [])
       e.target.value = ''
-      if (!list.length) return
+      if (!list.length) {
+        pickAtViewportCenterRef.current = false
+        return
+      }
       const files = list.map((file) => ({
         file,
         relativePath:
           (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name,
       }))
       const top = files[0].relativePath.split('/').filter(Boolean)[0] || 'Folder'
-      void addFolderAt(top, files, pickPosRef.current)
+      void addFolderAt(top, files, resolvePickPosition('folder'))
     },
-    [addFolderAt],
+    [addFolderAt, resolvePickPosition],
   )
 
   useEffect(() => {
@@ -356,8 +408,14 @@ function CanvasInner() {
       {canvasEmpty && !floatingAdd && (
         <AddChooser
           centered
-          onPickFiles={() => openFilesDialog(viewportCenterFlow())}
-          onPickFolder={() => openFolderDialog(viewportCenterFlow())}
+          onPickFiles={() => {
+            pickAtViewportCenterRef.current = true
+            openFilesDialog(viewportCenterFlow())
+          }}
+          onPickFolder={() => {
+            pickAtViewportCenterRef.current = true
+            openFolderDialog(viewportCenterFlow())
+          }}
         />
       )}
 
@@ -369,11 +427,13 @@ function CanvasInner() {
           onPickFiles={() => {
             const pos = floatingAdd.flow
             setFloatingAdd(null)
+            pickAtViewportCenterRef.current = false
             openFilesDialog(pos)
           }}
           onPickFolder={() => {
             const pos = floatingAdd.flow
             setFloatingAdd(null)
+            pickAtViewportCenterRef.current = false
             openFolderDialog(pos)
           }}
         />
