@@ -571,6 +571,11 @@ button {
   outline: none;
 }
 
+.file-node__preview--wave {
+  overflow: hidden;
+  isolation: isolate;
+}
+
 /* Slight zoom so edges bleed under clip + inset stroke at high canvas zoom. */
 .file-node__preview-img {
   position: absolute;

@@ -1,6 +1,6 @@
 import { FlutedGlass } from '@paper-design/shaders-react'
 import { animate } from 'motion'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   FLUTED_GLASS_MAX_PIXEL_COUNT,
   PREVIEW_COLOR_BACK_DARK,
@@ -127,11 +127,13 @@ function ConversionPreviewImage({
   onNaturalSize?: (width: number, height: number) => void
   onWaveComplete?: () => void
 }) {
-  const [waveT, setWaveT] = useState(0)
-  const [waveFinished, setWaveFinished] = useState(!waveEligible)
-  const [shaderOpacity, setShaderOpacity] = useState(waveEligible ? 1 : 0)
+  const [waveT, setWaveT] = useState(() => (waveEligible ? 0 : 1))
+  const [waveFinished, setWaveFinished] = useState(() => !waveEligible)
+  const [shaderOpacity, setShaderOpacity] = useState(() => (waveEligible ? 1 : 0))
   const [resultOpacity, setResultOpacity] = useState(0)
   const [shaderFailed, setShaderFailed] = useState(false)
+  const [shaderPaintReady, setShaderPaintReady] = useState(false)
+  const shaderWrapRef = useRef<HTMLDivElement>(null)
   const waveSessionRef = useRef(0)
   const crossfadeSessionRef = useRef(0)
   const onWaveCompleteRef = useRef(onWaveComplete)
@@ -145,7 +147,7 @@ function ConversionPreviewImage({
     [],
   )
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!waveEligible) {
       setWaveT(1)
       setWaveFinished(true)
@@ -159,6 +161,7 @@ function ConversionPreviewImage({
     setShaderOpacity(1)
     setResultOpacity(0)
     setShaderFailed(false)
+    setShaderPaintReady(false)
 
     if (reducedMotion) {
       const t = window.setTimeout(() => {
@@ -186,6 +189,30 @@ function ConversionPreviewImage({
     })
     return () => ctrl.stop()
   }, [waveEligible, reducedMotion, conversionWaveReplayKey])
+
+  useLayoutEffect(() => {
+    if (!waveEligible || shaderFailed) {
+      setShaderPaintReady(false)
+      return
+    }
+    let cancelled = false
+    const markReady = () => {
+      if (!cancelled) setShaderPaintReady(true)
+    }
+    const raf = requestAnimationFrame(() => {
+      requestAnimationFrame(markReady)
+    })
+    const el = shaderWrapRef.current
+    const canvas = el?.querySelector('canvas')
+    if (canvas) {
+      canvas.addEventListener('webglcontextrestored', markReady)
+    }
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(raf)
+      canvas?.removeEventListener('webglcontextrestored', markReady)
+    }
+  }, [waveEligible, shaderFailed, sourcePreview, conversionWaveReplayKey])
 
   const readyToReveal = waveFinished && jobDone && !!outputSrc
 
@@ -224,13 +251,17 @@ function ConversionPreviewImage({
     return () => ctrl.stop()
   }, [readyToReveal, reducedMotion, waveEligible, waveFinished])
 
-  const showShader =
+  const waveActive = waveEligible && !waveFinished
+  const showShaderLayer =
     !shaderFailed && shaderOpacity > 0.001 && (waveEligible || waveFinished)
-  const showResultImg = !!outputSrc && (readyToReveal || resultOpacity > 0)
+  const shaderRevealReady = !waveActive || shaderPaintReady
+  const showResultImg =
+    !!outputSrc && !waveActive && (readyToReveal || resultOpacity > 0)
   const resultVisible = readyToReveal && resultOpacity >= 0.999
   const showPreviewImg =
-    (!showShader && !showResultImg) ||
-    (shaderFailed && waveEligible && !showResultImg)
+    !waveEligible &&
+    ((!showShaderLayer && !showResultImg) ||
+      (shaderFailed && !showResultImg))
 
   const glassParams = useMemo(
     () => ({ ...flutedGlassAtProgress(waveT), colorBack: previewFill }),
@@ -248,7 +279,7 @@ function ConversionPreviewImage({
 
   return (
     <div
-      className="file-node__preview"
+      className={`file-node__preview${waveActive ? ' file-node__preview--wave' : ''}`}
       style={{ width: '100%', height: '100%' }}
     >
       {showPreviewImg ? (
@@ -274,7 +305,7 @@ function ConversionPreviewImage({
           onLoad={onImgLoad}
         />
       ) : null}
-      {showShader ? (
+      {showShaderLayer ? (
         <>
           <img
             src={sourcePreview}
@@ -284,8 +315,12 @@ function ConversionPreviewImage({
             onLoad={onImgLoad}
           />
           <div
+            ref={shaderWrapRef}
             className="file-node__preview-shader"
-            style={{ opacity: shaderOpacity }}
+            style={{
+              opacity: shaderRevealReady ? shaderOpacity : 0,
+              background: previewFill,
+            }}
           >
             <FlutedGlass
               image={sourcePreview}
