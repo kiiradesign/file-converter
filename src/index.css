@@ -479,7 +479,8 @@ button {
   height: 210px;
   border-radius: var(--fc-radius);
   background: var(--fc-preview);
-  overflow: hidden;
+  /* Handles and + sit outside the media clip; media clips in __card-media. */
+  overflow: visible;
   position: relative;
   border: none;
   box-shadow: none;
