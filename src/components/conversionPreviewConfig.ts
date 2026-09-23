@@ -43,7 +43,7 @@ export const FLUTED_GLASS_LOAD = {
   colorHighlight: '#ffffff',
   shadows: 0.03,
   highlights: 0.008,
-  size: 0.8,
+  size: 0.95,
   shape: 'lines' as const,
   angle: 0,
   distortionShape: 'prism' as const,
