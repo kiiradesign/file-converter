@@ -3,7 +3,6 @@ import { useCanvasStore } from '../store/canvasStore'
 export function Breadcrumb() {
   const folderStack = useCanvasStore((s) => s.folderStack)
   const folders = useCanvasStore((s) => s.folders)
-  const goBack = useCanvasStore((s) => s.goBack)
   const goToStackIndex = useCanvasStore((s) => s.goToStackIndex)
 
   if (folderStack.length === 0) return null
@@ -27,10 +26,6 @@ export function Breadcrumb() {
           </button>
         </span>
       ))}
-      <span className="sep">·</span>
-      <button type="button" onClick={goBack}>
-        Back
-      </button>
     </div>
   )
 }
