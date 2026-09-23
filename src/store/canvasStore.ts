@@ -14,6 +14,7 @@ import {
   canDecodeInBrowser,
   compatibleTargets,
   encodeFormatFromExtension,
+  resultFolderName,
   rewriteExtension,
   uniqueFileName,
   WEB_ENCODE_FORMATS,
@@ -660,7 +661,10 @@ async function convertFolder(
   const takenFolderLabels = get()
     .nodes.filter((n) => n.data.canvasId === canvasId && n.data.kind === 'folder')
     .map((n) => n.data.label)
-  const resultLabel = uniqueFileName(`New ${sourceFolder.name}`, takenFolderLabels)
+  const resultLabel = uniqueFileName(
+    resultFolderName(sourceFolder.name, settings.format),
+    takenFolderLabels,
+  )
 
   const newFolder: FolderEntry = {
     id: newFolderId,

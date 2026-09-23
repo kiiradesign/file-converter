@@ -109,6 +109,11 @@ export function formatLabel(format: ConvertFormat): string {
   return format.toUpperCase()
 }
 
+/** Result folder label: `Vacation (WEBP)`. */
+export function resultFolderName(sourceName: string, format: ConvertFormat): string {
+  return `${sourceName} (${formatLabel(format)})`
+}
+
 export function rewriteExtension(originalName: string, format: ConvertFormat): string {
   const base = basenameWithoutExt(originalName)
   const ext = format === 'jpg' ? 'jpg' : format
