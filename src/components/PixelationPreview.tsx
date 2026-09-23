@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { ImageDithering } from '@paper-design/shaders-react'
 import { animate } from 'motion'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -6,6 +7,14 @@ import {
   DITHER_MAX_PIXEL_COUNT,
   IMAGE_DITHERING,
   REVEAL_DURATION_S,
+=======
+import { animate } from 'motion'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { DitherBlockWaveWebGL } from './DitherBlockWaveWebGL'
+import {
+  HALFTONE_COLOR_BACK_DARK,
+  REVEAL_CROSSFADE_S,
+>>>>>>> ab03aa9 (Rebuild conversion loading as WebGL dither block wave)
   WAVE_DURATION_S,
 } from './pixelationWaveConfig'
 
@@ -21,31 +30,23 @@ interface Props {
   mimeType?: string
   isResult?: boolean
   jobStatus?: 'idle' | 'running' | 'done' | 'error'
+<<<<<<< HEAD
   /** When true, play the fixed 1s dither wave (independent of encode progress). */
+=======
+  /** When true, play the fixed 1s dither block wave (independent of encode progress). */
+>>>>>>> ab03aa9 (Rebuild conversion loading as WebGL dither block wave)
   conversionWavePending?: boolean
   onWaveComplete?: () => void
   onNaturalSize?: (width: number, height: number) => void
 }
 
-let webglAvailable: boolean | null = null
-
-function canUseWebGL(): boolean {
-  if (webglAvailable != null) return webglAvailable
-  if (typeof document === 'undefined') return false
-  try {
-    const canvas = document.createElement('canvas')
-    webglAvailable = !!(
-      canvas.getContext('webgl2') || canvas.getContext('webgl')
-    )
-  } catch {
-    webglAvailable = false
-  }
-  return webglAvailable
-}
-
 /**
+<<<<<<< HEAD
  * Node preview: during conversion, only dithered source + pixel grid wave (no output blob).
  * After wave + encode, crossfade to the real converted image.
+=======
+ * Node preview: dithered WebGL block wave while converting; crossfade to full output when ready.
+>>>>>>> ab03aa9 (Rebuild conversion loading as WebGL dither block wave)
  */
 export function PixelationPreview({
   src,
@@ -99,6 +100,22 @@ export function PixelationPreview({
   )
 }
 
+function subscribeTheme(onStoreChange: () => void) {
+  const obs = new MutationObserver(onStoreChange)
+  obs.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-theme'],
+  })
+  return () => obs.disconnect()
+}
+
+function readDitherBack(): string {
+  const v = getComputedStyle(document.documentElement)
+    .getPropertyValue('--fc-halftone-back')
+    .trim()
+  return v || HALFTONE_COLOR_BACK_DARK
+}
+
 function ConversionPreviewImage({
   sourcePreview,
   outputSrc,
@@ -120,12 +137,26 @@ function ConversionPreviewImage({
 }) {
   const [waveT, setWaveT] = useState(0)
   const [waveFinished, setWaveFinished] = useState(!waveEligible)
+<<<<<<< HEAD
   const [revealT, setRevealT] = useState(0)
   const [revealDone, setRevealDone] = useState(!waveEligible)
   const waveSessionRef = useRef(0)
   const revealSessionRef = useRef(0)
+=======
+  const [webglOpacity, setWebglOpacity] = useState(waveEligible ? 1 : 0)
+  const [resultOpacity, setResultOpacity] = useState(0)
+  const waveSessionRef = useRef(0)
+  const crossfadeSessionRef = useRef(0)
+>>>>>>> ab03aa9 (Rebuild conversion loading as WebGL dither block wave)
   const onWaveCompleteRef = useRef(onWaveComplete)
   onWaveCompleteRef.current = onWaveComplete
+
+  const colorBack = useSyncExternalStore(
+    subscribeTheme,
+    readDitherBack,
+    () => HALFTONE_COLOR_BACK_DARK,
+  )
+
   const reducedMotion = useMemo(
     () =>
       typeof window !== 'undefined' &&
@@ -146,8 +177,13 @@ function ConversionPreviewImage({
     const session = waveSessionRef.current
     setWaveT(0)
     setWaveFinished(false)
+<<<<<<< HEAD
     setRevealT(0)
     setRevealDone(false)
+=======
+    setWebglOpacity(1)
+    setResultOpacity(0)
+>>>>>>> ab03aa9 (Rebuild conversion loading as WebGL dither block wave)
 
     if (reducedMotion) {
       const t = window.setTimeout(() => {
@@ -176,6 +212,7 @@ function ConversionPreviewImage({
     return () => ctrl.stop()
   }, [waveEligible, reducedMotion])
 
+<<<<<<< HEAD
   useEffect(() => {
     if (!waveFinished || !jobDone || !outputSrc) return
 
@@ -187,10 +224,30 @@ function ConversionPreviewImage({
     if (reducedMotion) {
       setRevealT(1)
       setRevealDone(true)
+=======
+  const readyToReveal = waveFinished && jobDone && !!outputSrc
+
+  useEffect(() => {
+    if (!readyToReveal) {
+      if (!waveEligible && !waveFinished) {
+        setWebglOpacity(0)
+        setResultOpacity(1)
+      }
+      return
+    }
+
+    crossfadeSessionRef.current += 1
+    const session = crossfadeSessionRef.current
+
+    if (reducedMotion) {
+      setWebglOpacity(0)
+      setResultOpacity(1)
+>>>>>>> ab03aa9 (Rebuild conversion loading as WebGL dither block wave)
       return
     }
 
     const ctrl = animate(0, 1, {
+<<<<<<< HEAD
       duration: REVEAL_DURATION_S,
       ease: [0.4, 0, 0.2, 1],
       onUpdate: (v) => {
@@ -223,6 +280,40 @@ function ConversionPreviewImage({
         <img
           key={finalSrc}
           src={finalSrc}
+=======
+      duration: REVEAL_CROSSFADE_S,
+      ease: [0.4, 0, 0.2, 1],
+      onUpdate: (v) => {
+        if (session !== crossfadeSessionRef.current) return
+        setResultOpacity(v)
+        setWebglOpacity(1 - v)
+      },
+      onComplete: () => {
+        if (session !== crossfadeSessionRef.current) return
+        setResultOpacity(1)
+        setWebglOpacity(0)
+      },
+    })
+    return () => ctrl.stop()
+  }, [readyToReveal, reducedMotion, waveEligible, waveFinished])
+
+  const showWebgl = webglOpacity > 0.001 && (waveEligible || waveFinished)
+  const waveSource = previewSrc || fallbackSrc
+
+  const showResultImg = !!outputSrc && (readyToReveal || resultOpacity > 0)
+  const resultVisible = readyToReveal && resultOpacity >= 0.999
+  const showPreviewImg = !showWebgl && !showResultImg
+
+  return (
+    <div
+      className={`file-node__preview${showWebgl ? ' file-node__preview--wave' : ''}`}
+      style={{ width: '100%', height: '100%' }}
+    >
+      {showPreviewImg ? (
+        <img
+          key={waveSource}
+          src={waveSource}
+>>>>>>> ab03aa9 (Rebuild conversion loading as WebGL dither block wave)
           alt=""
           draggable={false}
           decoding="async"
@@ -234,16 +325,26 @@ function ConversionPreviewImage({
             }
           }}
         />
+<<<<<<< HEAD
       )}
       {revealing && outputSrc && (
+=======
+      ) : null}
+      {showResultImg && outputSrc ? (
+>>>>>>> ab03aa9 (Rebuild conversion loading as WebGL dither block wave)
         <img
           key={outputSrc}
           src={outputSrc}
           alt=""
           draggable={false}
           decoding="async"
+<<<<<<< HEAD
           className="file-node__preview-img"
           style={{ opacity: revealT }}
+=======
+          className="file-node__preview-img file-node__preview-img--result"
+          style={{ opacity: resultVisible ? 1 : resultOpacity }}
+>>>>>>> ab03aa9 (Rebuild conversion loading as WebGL dither block wave)
           onLoad={(e) => {
             const img = e.currentTarget
             if (img.naturalWidth > 0 && img.naturalHeight > 0) {
@@ -251,6 +352,7 @@ function ConversionPreviewImage({
             }
           }}
         />
+<<<<<<< HEAD
       )}
       {showOverlay && sourcePreview && (
         <DitherWaveOverlay
@@ -360,6 +462,19 @@ function DitherWaveOverlay({
         revealT={revealT}
         showGrid
       />
+=======
+      ) : null}
+      {showWebgl ? (
+        <DitherBlockWaveWebGL
+          src={waveSource}
+          width={width}
+          height={height}
+          waveT={waveT}
+          layerOpacity={webglOpacity}
+          colorBack={colorBack}
+        />
+      ) : null}
+>>>>>>> ab03aa9 (Rebuild conversion loading as WebGL dither block wave)
     </div>
   )
 }
