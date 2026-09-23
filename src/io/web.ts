@@ -51,6 +51,7 @@ export async function createFileEntry(file: File, id = uid('file')): Promise<Fil
       entry.previewUrl = preview.previewUrl
       entry.width = preview.width
       entry.height = preview.height
+      entry.mimeType = entry.mimeType || 'image/heic'
     } catch (err) {
       console.error('HEIC preview decode failed', err)
     }

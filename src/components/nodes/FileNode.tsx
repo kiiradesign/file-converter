@@ -2,6 +2,10 @@ import { Handle, Position, useViewport, type NodeProps } from '@xyflow/react'
 import { Download, Minimize2, Plus } from 'lucide-react'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useCanvasStore, type FileNodeData } from '../../store/canvasStore'
+import {
+  fileOutputSrc,
+  fileThumbnailSrc,
+} from '../../lib/fileDisplaySrc'
 import { previewCardSize } from '../../lib/previewCardSize'
 import { PixelationPreview } from '../PixelationPreview'
 
@@ -19,24 +23,13 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
   const [hovered, setHovered] = useState(false)
 
   const counter = 1 / Math.max(zoom, 0.01)
-  /** Source preview while converting; result nodes keep ingest preview, not output blob. */
-  const previewSrc = data.isResult
-    ? file?.previewUrl ?? null
-    : file?.previewUrl || file?.objectUrl || null
-  const outputSrc =
-    file?.objectUrl && (file.size ?? 0) > 0 ? file.objectUrl : null
+  const previewSrc = fileThumbnailSrc(file, { isResult: !!data.isResult })
+  const outputSrc = fileOutputSrc(file, !!data.isResult)
   const converting =
     data.isResult &&
     (data.conversionWavePending === true || data.jobStatus === 'running')
-  /**
-   * HEIC/SVG ingest sets previewUrl; objectUrl may be undisplayable in <img>.
-   * Result nodes use the converted output once the wave is idle.
-   */
-  const src = converting
-    ? previewSrc
-    : data.isResult && outputSrc
-      ? outputSrc
-      : file?.previewUrl || outputSrc || previewSrc
+  /** Never pass output blob as display src while the conversion wave is active. */
+  const src = converting ? previewSrc : outputSrc || previewSrc
   const showHoverChrome = hovered && !draftOpen
 
   // Save on result nodes and on files inside a converted result folder.
