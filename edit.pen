@@ -1,0 +1,69 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "type": "frame",
+      "id": "fcScreen",
+      "x": 0,
+      "y": 0,
+      "name": "File Converter — canvas chrome",
+      "clip": true,
+      "width": 1280,
+      "height": 800,
+      "fill": "#000000",
+      "layout": "none",
+      "children": [
+        {
+          "type": "frame",
+          "id": "fcTitle",
+          "x": 20,
+          "y": 20,
+          "name": "chrome-title",
+          "layout": "vertical",
+          "gap": 2,
+          "width": "fit_content",
+          "height": "fit_content",
+          "children": [
+            {
+              "type": "text",
+              "id": "fcHeading",
+              "name": "heading",
+              "content": "File Converter",
+              "fill": "#ededed",
+              "fontFamily": "Inter",
+              "fontSize": 32,
+              "fontWeight": "600",
+              "letterSpacing": -0.96,
+              "lineHeight": 1.1,
+              "textGrowth": "auto"
+            },
+            {
+              "type": "text",
+              "id": "fcSubtext",
+              "name": "subtext",
+              "content": "Convert files on an infinite canvas.",
+              "fill": "#888888",
+              "fontFamily": "Inter",
+              "fontSize": 14,
+              "fontWeight": "400",
+              "lineHeight": 1.3,
+              "textGrowth": "auto"
+            }
+          ]
+        },
+        {
+          "type": "note",
+          "id": "fcNote",
+          "x": 20,
+          "y": 100,
+          "width": 360,
+          "height": 80,
+          "name": "edit note",
+          "content": "Edit heading/subtext gap here (chrome-title gap). Sync visual tweaks back to src/index.css (.chrome-title).",
+          "fontSize": 12,
+          "fill": "#666666"
+        }
+      ]
+    }
+  ]
+}
