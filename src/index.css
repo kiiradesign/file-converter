@@ -596,7 +596,7 @@ button {
   -webkit-user-drag: none;
   user-select: none;
   backface-visibility: hidden;
-  transform: translateZ(0) scale(1.05);
+  transform: translateZ(0) scale(1.02);
   transform-origin: center center;
 }
 
@@ -621,9 +621,9 @@ button {
   outline: none;
   isolation: isolate;
   contain: layout paint;
-  will-change: opacity, transform;
+  will-change: opacity;
   backface-visibility: hidden;
-  transform: translateZ(0) scale(1.05);
+  transform: translateZ(0);
   transform-origin: center center;
 }
 

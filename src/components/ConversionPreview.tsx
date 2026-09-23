@@ -2,8 +2,9 @@ import { FlutedGlass } from '@paper-design/shaders-react'
 import { animate } from 'motion'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
-  FLUTED_GLASS_MAX_PIXEL_COUNT,
+  FLUTED_GLASS_MIN_PIXEL_RATIO,
   PREVIEW_COLOR_BACK_DARK,
+  flutedGlassMaxPixelCountForSize,
   REVEAL_CROSSFADE_S,
   WAVE_DURATION_S,
   WAVE_EASE,
@@ -295,6 +296,10 @@ function ConversionPreviewImage({
   )
   const boxW = Math.max(1, Math.round(width))
   const boxH = Math.max(1, Math.round(height))
+  const maxPixelCount = useMemo(
+    () => flutedGlassMaxPixelCountForSize(boxW, boxH),
+    [boxW, boxH],
+  )
 
   const onImgLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget
@@ -352,7 +357,8 @@ function ConversionPreviewImage({
               image={sourcePreview}
               width={boxW}
               height={boxH}
-              maxPixelCount={FLUTED_GLASS_MAX_PIXEL_COUNT}
+              minPixelRatio={FLUTED_GLASS_MIN_PIXEL_RATIO}
+              maxPixelCount={maxPixelCount}
               speed={0}
               frame={0}
               colorBack={glassParams.colorBack}

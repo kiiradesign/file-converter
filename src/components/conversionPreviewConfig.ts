@@ -13,8 +13,25 @@ export const REVEAL_CROSSFADE_S = 0.32
 /** Dark canvas match when CSS var is unavailable (SSR / first paint). */
 export const PREVIEW_COLOR_BACK_DARK = '#0a0a0a'
 
-/** Cap shader pixel count for the preview card (higher = sharper refraction). */
-export const FLUTED_GLASS_MAX_PIXEL_COUNT = 480_000
+/**
+ * Floor for shader render budget (physical pixels). Pair with `minPixelRatio` and
+ * `flutedGlassMaxPixelCountForSize` so preview cards are not capped below DPR.
+ */
+export const FLUTED_GLASS_MAX_PIXEL_COUNT = 2_073_600
+
+/** Supersample preview refraction above system DPR when it is below this floor. */
+export const FLUTED_GLASS_MIN_PIXEL_RATIO = 3
+
+/** Preview card at full DPR + min ratio without `maxPixelCount` downscale. */
+export function flutedGlassMaxPixelCountForSize(cssWidth: number, cssHeight: number): number {
+  const w = Math.max(1, Math.round(cssWidth))
+  const h = Math.max(1, Math.round(cssHeight))
+  const dpr =
+    typeof window !== 'undefined' ? Math.max(1, window.devicePixelRatio) : FLUTED_GLASS_MIN_PIXEL_RATIO
+  const renderScale = Math.max(dpr, FLUTED_GLASS_MIN_PIXEL_RATIO)
+  const needed = Math.ceil(w * renderScale) * Math.ceil(h * renderScale)
+  return Math.max(FLUTED_GLASS_MAX_PIXEL_COUNT, needed)
+}
 
 /**
  * Full-strength fluted glass at animation start (frame 0 / replay).
@@ -24,22 +41,22 @@ export const FLUTED_GLASS_LOAD = {
   colorBack: PREVIEW_COLOR_BACK_DARK,
   colorShadow: '#000000',
   colorHighlight: '#ffffff',
-  shadows: 0.06,
-  highlights: 0.02,
+  shadows: 0.03,
+  highlights: 0.008,
   size: 0.74,
   shape: 'lines' as const,
   angle: 0,
   distortionShape: 'prism' as const,
-  distortion: 0.46,
+  distortion: 0.36,
   shift: 0,
   stretch: 0,
   blur: 0,
   edges: 0,
-  margin: 0.02,
+  margin: 0.01,
   grainMixer: 0,
   grainOverlay: 0,
   fit: 'cover' as const,
-  scale: 1.05,
+  scale: 1.02,
 }
 
 /** Fully revealed — no glass distortion (shader ≈ source image). */
