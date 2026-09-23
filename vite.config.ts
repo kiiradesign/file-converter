@@ -5,8 +5,8 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [react()],
   optimizeDeps: {
-    // @jsquash/avif loads WASM via dynamic import; keep it out of pre-bundle.
-    exclude: ['@jsquash/avif'],
+    // WASM / bundle loaders — keep out of pre-bundle.
+    exclude: ['@jsquash/avif', 'libheif-js'],
   },
   worker: {
     format: 'es',

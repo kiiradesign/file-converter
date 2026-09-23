@@ -95,5 +95,5 @@ export async function runConversion(
     throw new Error(`Cannot decode .${source.extension} in this runtime`)
   }
   const convert = isDesktop() ? convertImageDesktop : convertImageWeb
-  return convert(source.objectUrl, settings, onProgress)
+  return convert(source.objectUrl, settings, onProgress, source.extension)
 }

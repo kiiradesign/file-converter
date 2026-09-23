@@ -6,6 +6,7 @@ export async function convertImageDesktop(
   sourceUrl: string,
   settings: ConvertSettings,
   onProgress?: (p: number) => void,
+  sourceExt?: string,
 ): Promise<Blob> {
-  return convertImageWeb(sourceUrl, settings, onProgress)
+  return convertImageWeb(sourceUrl, settings, onProgress, sourceExt)
 }

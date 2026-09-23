@@ -5,6 +5,7 @@ import {
   ReactFlowProvider,
   useReactFlow,
   type OnMove,
+  type OnMoveEnd,
   type XYPosition,
 } from '@xyflow/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -30,6 +31,27 @@ type FloatingAdd = {
   screen: { left: number; top: number }
 }
 
+type DotPattern = { gap: number; size: number }
+
+/** FigJam-style screen density for a given zoom (flow-space gap/size). */
+function patternForZoom(zoom: number): DotPattern {
+  const z = Math.max(0.2, Math.min(3, zoom))
+  const stepped = Math.round(z * 24) / 24
+  const screenGap = 28
+  const screenSize = 1.5
+  return {
+    gap: Math.max(10, Math.round(screenGap / stepped)),
+    size: Math.min(7, Math.max(0.9, Number((screenSize / stepped).toFixed(2)))),
+  }
+}
+
+function easeOutCubic(t: number): number {
+  return 1 - (1 - t) ** 3
+}
+
+const DOT_IDLE_MS = 120
+const DOT_EASE_MS = 240
+
 function CanvasInner() {
   const nodes = useCanvasStore((s) => s.nodes)
   const edges = useCanvasStore((s) => s.edges)
@@ -38,7 +60,6 @@ function CanvasInner() {
   const onNodesChange = useCanvasStore((s) => s.onNodesChange)
   const onEdgesChange = useCanvasStore((s) => s.onEdgesChange)
   const setZoom = useCanvasStore((s) => s.setZoom)
-  const zoom = useCanvasStore((s) => s.zoom)
   const addFilesAt = useCanvasStore((s) => s.addFilesAt)
   const addFolderAt = useCanvasStore((s) => s.addFolderAt)
   const handleDrop = useCanvasStore((s) => s.handleDrop)
@@ -54,16 +75,59 @@ function CanvasInner() {
   /** Floating double-click chooser only (dismissible). Empty-state is separate. */
   const [floatingAdd, setFloatingAdd] = useState<FloatingAdd | null>(null)
 
-  const dotPattern = useMemo(() => {
-    const z = Math.max(0.2, Math.min(3, zoom))
-    const stepped = Math.round(z * 24) / 24
-    const screenGap = 28
-    const screenSize = 1.5
-    return {
-      gap: Math.max(10, Math.round(screenGap / stepped)),
-      size: Math.min(7, Math.max(0.9, Number((screenSize / stepped).toFixed(2)))),
+  // Dots: freeze gap/size during zoom; ease to new density after idle.
+  const [dotPattern, setDotPattern] = useState<DotPattern>(() => patternForZoom(1))
+  const dotsRef = useRef(dotPattern)
+  const pendingZoomRef = useRef(1)
+  const idleTimerRef = useRef<number | null>(null)
+  const animRef = useRef<number | null>(null)
+
+  const settleDots = useCallback((targetZoom: number) => {
+    const from = dotsRef.current
+    const to = patternForZoom(targetZoom)
+    if (from.gap === to.gap && from.size === to.size) return
+
+    if (animRef.current != null) cancelAnimationFrame(animRef.current)
+    const start = performance.now()
+    const startGap = from.gap
+    const startSize = from.size
+
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / DOT_EASE_MS)
+      const e = easeOutCubic(t)
+      const next: DotPattern =
+        t >= 1
+          ? to
+          : {
+              gap: startGap + (to.gap - startGap) * e,
+              size: Number((startSize + (to.size - startSize) * e).toFixed(3)),
+            }
+      dotsRef.current = next
+      setDotPattern(next)
+      if (t < 1) animRef.current = requestAnimationFrame(tick)
+      else animRef.current = null
     }
-  }, [zoom])
+    animRef.current = requestAnimationFrame(tick)
+  }, [])
+
+  const scheduleDotSettle = useCallback(
+    (z: number) => {
+      pendingZoomRef.current = z
+      if (idleTimerRef.current != null) window.clearTimeout(idleTimerRef.current)
+      idleTimerRef.current = window.setTimeout(() => {
+        idleTimerRef.current = null
+        settleDots(pendingZoomRef.current)
+      }, DOT_IDLE_MS)
+    },
+    [settleDots],
+  )
+
+  useEffect(() => {
+    return () => {
+      if (idleTimerRef.current != null) window.clearTimeout(idleTimerRef.current)
+      if (animRef.current != null) cancelAnimationFrame(animRef.current)
+    }
+  }, [])
 
   const current = folderStack.length ? folderStack[folderStack.length - 1] : null
   const visibleNodes = useMemo(
@@ -84,8 +148,22 @@ function CanvasInner() {
   const onMove: OnMove = useCallback(
     (_evt, viewport) => {
       setZoom(viewport.zoom)
+      // Keep current gap/size while gesturing; settle after idle.
+      scheduleDotSettle(viewport.zoom)
     },
-    [setZoom],
+    [setZoom, scheduleDotSettle],
+  )
+
+  const onMoveEnd: OnMoveEnd = useCallback(
+    (_evt, viewport) => {
+      setZoom(viewport.zoom)
+      if (idleTimerRef.current != null) {
+        window.clearTimeout(idleTimerRef.current)
+        idleTimerRef.current = null
+      }
+      settleDots(viewport.zoom)
+    },
+    [setZoom, settleDots],
   )
 
   /** Center of the current viewport in flow coords (for empty-state picks). */
@@ -205,7 +283,7 @@ function CanvasInner() {
         ref={fileInputRef}
         type="file"
         multiple
-        accept="image/*,.png,.jpg,.jpeg,.webp,.gif,.bmp,.avif,.pdf"
+        accept="image/*,.png,.jpg,.jpeg,.webp,.gif,.bmp,.avif,.heic,.heif,.pdf"
         className="fc-hidden-file-input"
         onChange={onFilesSelected}
       />
@@ -223,6 +301,7 @@ function CanvasInner() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onMove={onMove}
+        onMoveEnd={onMoveEnd}
         onDoubleClick={onDoubleClick}
         onPaneClick={() => setFloatingAdd(null)}
         nodeTypes={nodeTypes}

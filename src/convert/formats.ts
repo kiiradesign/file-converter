@@ -63,8 +63,10 @@ export function isImageExtension(ext: string): boolean {
 
 export function canDecodeInBrowser(ext: string): boolean {
   const e = ext.toLowerCase()
-  // AVIF decode via <img> when the browser supports it; HEIC typically does not.
-  return ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'avif'].includes(e)
+  // Native <img> for common formats; HEIC/HEIF via libheif WASM (decode-only).
+  return ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'avif', 'heic', 'heif'].includes(
+    e,
+  )
 }
 
 /** Map a file extension to an encode format when we can produce it. */
@@ -79,7 +81,7 @@ export function encodeFormatFromExtension(ext: string): ConvertFormat | null {
 /**
  * Compatible encode targets for a source (other formats only).
  * Same-format re-encode stays on the Compress / Adjust flow — do not list
- * the source’s own format here. HEIC is decode-limited and never a target.
+ * the source’s own format here. HEIC/HEIF decode is supported; encode is not.
  */
 export function compatibleTargets(
   sourceExt: string,

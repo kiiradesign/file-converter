@@ -3,6 +3,7 @@ import { outputMime } from '../formats'
 import { encodeAvifBlob } from './avif'
 import { encodeBmp } from './bmp'
 import { encodeGif } from './gif'
+import { isHeicExtension, loadHeicAsImage } from './heic'
 import { encodePdf } from './pdf'
 
 function loadImage(url: string): Promise<HTMLImageElement> {
@@ -12,6 +13,17 @@ function loadImage(url: string): Promise<HTMLImageElement> {
     img.onerror = () => reject(new Error('Failed to decode image'))
     img.src = url
   })
+}
+
+/** Decode any supported source — HEIC/HEIF via libheif, else browser <img>. */
+async function loadDecodedImage(
+  url: string,
+  sourceExt?: string,
+): Promise<HTMLImageElement> {
+  if (sourceExt && isHeicExtension(sourceExt)) {
+    return loadHeicAsImage(url)
+  }
+  return loadImage(url)
 }
 
 function drawScaled(
@@ -86,14 +98,16 @@ async function encodeOnce(
 /**
  * Encode an image in-browser. Quality + resolution drive encode where supported.
  * If maxBytes is set, binary-search quality then reduce scale until under cap.
+ * Pass `sourceExt` so HEIC/HEIF can be decoded via libheif.
  */
 export async function convertImageWeb(
   sourceUrl: string,
   settings: ConvertSettings,
   onProgress?: (p: number) => void,
+  sourceExt?: string,
 ): Promise<Blob> {
   onProgress?.(0.1)
-  const img = await loadImage(sourceUrl)
+  const img = await loadDecodedImage(sourceUrl, sourceExt)
   onProgress?.(0.35)
 
   let quality = settings.quality
@@ -145,7 +159,8 @@ export async function convertImageWeb(
 
 export async function probeImageSize(
   url: string,
+  sourceExt?: string,
 ): Promise<{ width: number; height: number }> {
-  const img = await loadImage(url)
+  const img = await loadDecodedImage(url, sourceExt)
   return { width: img.naturalWidth, height: img.naturalHeight }
 }

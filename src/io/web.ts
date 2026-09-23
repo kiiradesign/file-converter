@@ -14,11 +14,12 @@ function uid(prefix = 'id'): string {
 
 async function probeImageSizeTimed(
   url: string,
-  ms = 1500,
+  sourceExt: string,
+  ms = 2500,
 ): Promise<{ width: number; height: number } | null> {
   try {
     return await Promise.race([
-      probeImageSize(url),
+      probeImageSize(url, sourceExt),
       new Promise<null>((resolve) => {
         window.setTimeout(() => resolve(null), ms)
       }),
@@ -43,9 +44,13 @@ export async function createFileEntry(file: File, id = uid('file')): Promise<Fil
 
   if (
     file.type.startsWith('image/') ||
-    ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'avif'].includes(extension)
+    ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'avif', 'heic', 'heif'].includes(
+      extension,
+    )
   ) {
-    const size = await probeImageSizeTimed(objectUrl)
+    // HEIC decode is slower (WASM); allow a longer probe timeout.
+    const timeout = extension === 'heic' || extension === 'heif' ? 8000 : 2500
+    const size = await probeImageSizeTimed(objectUrl, extension, timeout)
     if (size) {
       entry.width = size.width
       entry.height = size.height
@@ -95,7 +100,8 @@ function openFileInput(configure: (input: HTMLInputElement) => void): Promise<Fi
 export async function pickFiles(): Promise<File[]> {
   return openFileInput((input) => {
     input.multiple = true
-    input.accept = 'image/*,.png,.jpg,.jpeg,.webp,.gif,.bmp,.avif,.pdf'
+    input.accept =
+      'image/*,.png,.jpg,.jpeg,.webp,.gif,.bmp,.avif,.heic,.heif,.pdf'
   })
 }
 
