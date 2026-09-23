@@ -19,9 +19,14 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
   const [hovered, setHovered] = useState(false)
 
   const counter = 1 / Math.max(zoom, 0.01)
-  /** Prefer output blob URL when present; during conversion use source preview on placeholder. */
-  const previewSrc = file?.previewUrl || file?.objectUrl || null
-  const outputSrc = file?.objectUrl || null
+  /** Source preview while converting; never swap to output until the wave finishes. */
+  const previewSrc =
+    file?.previewUrl ||
+    (!data.isResult ? file?.objectUrl : null) ||
+    file?.objectUrl ||
+    null
+  const outputSrc =
+    file?.objectUrl && (file.size ?? 0) > 0 ? file.objectUrl : null
   const src = outputSrc || previewSrc
   const showHoverChrome = hovered && !draftOpen
 

@@ -652,6 +652,7 @@ async function convertFileNode(
                 ...n.data,
                 jobStatus: 'error',
                 jobProgress: 1,
+                conversionWavePending: false,
               },
             }
           : n,

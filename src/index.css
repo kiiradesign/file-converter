@@ -100,8 +100,8 @@
   --fc-text-muted: #888888;
   --fc-text-subtle: #666666;
   --fc-dot: #333333;
-  --fc-preview: #171717;
-  --fc-halftone-back: #171717;
+  --fc-preview: #0a0a0a;
+  --fc-halftone-back: #0a0a0a;
   --fc-wire: #666666;
   --fc-folder: #5ac8fa;
   --fc-folder-tab: #64d2ff;
@@ -428,6 +428,7 @@ button {
 
 .react-flow__node {
   cursor: grab;
+  background: transparent !important;
 }
 
 .react-flow__node:active {
@@ -477,28 +478,40 @@ button {
   width: 168px;
   height: 210px;
   border-radius: var(--fc-radius);
-  background: transparent;
-  overflow: visible;
+  background: var(--fc-preview);
+  overflow: hidden;
   position: relative;
-  /* Inset stroke sits on top of media so zoom sub-pixels never reveal a gap. */
   border: none;
-  box-shadow: inset 0 0 0 1px var(--fc-border);
-  transition: box-shadow var(--duration-hover) var(--ease-out);
-}
-
-.file-node.is-hovered .file-node__card,
-.file-node:hover .file-node__card {
-  box-shadow: inset 0 0 0 1px var(--fc-border-strong);
+  box-shadow: none;
 }
 
 .file-node__card-media {
   position: relative;
-  width: 100%;
-  height: 100%;
+  /* Bleed under the inset stroke so zoom sub-pixels never show a light gap. */
+  width: calc(100% + 2px);
+  height: calc(100% + 2px);
+  margin: -1px;
   border-radius: var(--fc-radius);
   overflow: hidden;
-  background: transparent;
+  background: var(--fc-preview);
   isolation: isolate;
+  transform: translateZ(0);
+}
+
+.file-node__card-media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 2;
+  box-shadow: inset 0 0 0 1px var(--fc-border);
+  transition: box-shadow var(--duration-hover) var(--ease-out);
+}
+
+.file-node.is-hovered .file-node__card-media::after,
+.file-node:hover .file-node__card-media::after {
+  box-shadow: inset 0 0 0 1px var(--fc-border-strong);
 }
 
 .file-node__card img,
@@ -517,48 +530,68 @@ button {
   overflow: hidden;
   border-radius: inherit;
   line-height: 0;
+  background: var(--fc-preview);
 }
 
 .file-node__preview-img {
   position: absolute;
   z-index: 0;
-  /* Bleed past the clip so React Flow zoom never exposes card/halftone back. */
-  inset: -3px;
-  width: calc(100% + 6px);
-  height: calc(100% + 6px);
+  /* Bleed past the clip so React Flow zoom never exposes a light gap under the inset stroke. */
+  inset: -5px;
+  width: calc(100% + 10px);
+  height: calc(100% + 10px);
   max-width: none;
   object-fit: cover;
   object-position: center;
   display: block;
+  background: var(--fc-preview);
   /* Prefer crisp downscale from full-res source; never invent blur. */
   image-rendering: auto;
   -webkit-user-drag: none;
   user-select: none;
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);
 }
 
 .file-node__preview-halftone {
   position: absolute;
-  inset: -3px;
+  inset: -5px;
   z-index: 1;
-  width: calc(100% + 6px);
-  height: calc(100% + 6px);
+  width: calc(100% + 10px);
+  height: calc(100% + 10px);
   pointer-events: none;
   overflow: hidden;
   border-radius: inherit;
-  transform: scale(1.02);
-  transform-origin: center;
+  background: var(--fc-halftone-back);
   -webkit-mask-size: 100% 100%;
   mask-size: 100% 100%;
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
+  will-change: mask-image, -webkit-mask-image;
+  backface-visibility: hidden;
+  transform: translateZ(0);
 }
 
-.file-node__preview-halftone > div {
+.file-node__preview-wave-fallback {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+}
+
+.file-node__preview-halftone-shader,
+.file-node__preview-halftone-shader > div {
+  position: absolute;
+  inset: 0;
   width: 100% !important;
   height: 100% !important;
 }
 
-.file-node__preview-halftone canvas {
+.file-node__preview-halftone canvas,
+.file-node__preview-halftone-shader canvas {
   width: 100% !important;
   height: 100% !important;
   object-fit: unset;

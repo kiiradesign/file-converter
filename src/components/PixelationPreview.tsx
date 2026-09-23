@@ -3,6 +3,7 @@ import { animate } from 'motion'
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import {
   HALFTONE_CMYK,
+  HALFTONE_COLOR_BACK_DARK,
   HALFTONE_MAX_PIXEL_COUNT,
   WAVE_DURATION_S,
   WAVE_SOFTNESS,
@@ -24,6 +25,22 @@ interface Props {
   conversionWavePending?: boolean
   onWaveComplete?: () => void
   onNaturalSize?: (width: number, height: number) => void
+}
+
+let webglAvailable: boolean | null = null
+
+function canUseWebGL(): boolean {
+  if (webglAvailable != null) return webglAvailable
+  if (typeof document === 'undefined') return false
+  try {
+    const canvas = document.createElement('canvas')
+    webglAvailable = !!(
+      canvas.getContext('webgl2') || canvas.getContext('webgl')
+    )
+  } catch {
+    webglAvailable = false
+  }
+  return webglAvailable
 }
 
 /**
@@ -66,7 +83,7 @@ export function PixelationPreview({
   const waveEligible =
     !!isResult &&
     jobStatus !== 'error' &&
-    (!!conversionWavePending || jobStatus === 'running')
+    (conversionWavePending === true || jobStatus === 'running')
 
   return (
     <ConversionPreviewImage
@@ -106,6 +123,7 @@ function ConversionPreviewImage({
 }) {
   const [waveT, setWaveT] = useState(0)
   const [waveFinished, setWaveFinished] = useState(!waveEligible)
+  const waveSessionRef = useRef(0)
   const onWaveCompleteRef = useRef(onWaveComplete)
   onWaveCompleteRef.current = onWaveComplete
   const reducedMotion = useMemo(
@@ -122,21 +140,30 @@ function ConversionPreviewImage({
       return
     }
 
+    waveSessionRef.current += 1
+    const session = waveSessionRef.current
     setWaveT(0)
     setWaveFinished(false)
 
     if (reducedMotion) {
-      setWaveT(1)
-      setWaveFinished(true)
-      onWaveCompleteRef.current?.()
-      return
+      const t = window.setTimeout(() => {
+        if (session !== waveSessionRef.current) return
+        setWaveT(1)
+        setWaveFinished(true)
+        onWaveCompleteRef.current?.()
+      }, WAVE_DURATION_S * 1000)
+      return () => window.clearTimeout(t)
     }
 
     const ctrl = animate(0, 1, {
       duration: WAVE_DURATION_S,
       ease: [0.35, 0, 0.25, 1],
-      onUpdate: (v) => setWaveT(v),
+      onUpdate: (v) => {
+        if (session !== waveSessionRef.current) return
+        setWaveT(v)
+      },
       onComplete: () => {
+        if (session !== waveSessionRef.current) return
         setWaveT(1)
         setWaveFinished(true)
         onWaveCompleteRef.current?.()
@@ -148,6 +175,7 @@ function ConversionPreviewImage({
   const showResult = waveFinished && jobDone && !!outputSrc
   const displaySrc = showResult ? outputSrc! : previewSrc || fallbackSrc
   const showWave = waveEligible && !waveFinished
+  const useShader = canUseWebGL()
 
   return (
     <div className="file-node__preview" style={{ width: '100%', height: '100%' }}>
@@ -171,6 +199,7 @@ function ConversionPreviewImage({
           width={width}
           height={height}
           waveT={waveT}
+          useShader={useShader}
         />
       )}
     </div>
@@ -190,7 +219,18 @@ function readHalftoneBack(): string {
   const v = getComputedStyle(document.documentElement)
     .getPropertyValue('--fc-halftone-back')
     .trim()
-  return v || HALFTONE_CMYK.colorBack
+  return v || HALFTONE_CMYK.colorBack || HALFTONE_COLOR_BACK_DARK
+}
+
+function waveMaskStyle(waveT: number): React.CSSProperties {
+  const reveal = Math.min(1, Math.max(0, waveT))
+  const softPct = WAVE_SOFTNESS * 100
+  const frontPct = reveal * 100
+  const maskImage = `linear-gradient(to bottom, black 0%, black ${Math.max(0, frontPct - softPct)}%, transparent ${Math.min(100, frontPct + softPct)}%, transparent 100%)`
+  return {
+    WebkitMaskImage: maskImage,
+    maskImage,
+  }
 }
 
 function HalftoneWaveOverlay({
@@ -198,41 +238,147 @@ function HalftoneWaveOverlay({
   width,
   height,
   waveT,
+  useShader,
 }: {
   src: string
   width: number
   height: number
   waveT: number
+  useShader: boolean
 }) {
   const colorBack = useSyncExternalStore(
     subscribeTheme,
     readHalftoneBack,
-    () => HALFTONE_CMYK.colorBack,
+    () => HALFTONE_COLOR_BACK_DARK,
   )
-  const reveal = Math.min(1, Math.max(0, waveT))
-  const softPct = WAVE_SOFTNESS * 100
-  const frontPct = reveal * 100
-  // Halftone visible from top → frontPct (soft band); sharp source shows below the wave front.
-  const maskImage = `linear-gradient(to bottom, black 0%, black ${Math.max(0, frontPct - softPct)}%, transparent ${Math.min(100, frontPct + softPct)}%, transparent 100%)`
+  const [shaderFailed, setShaderFailed] = useState(false)
+  const showShader = useShader && !shaderFailed
+  const boxW = Math.max(1, Math.round(width))
+  const boxH = Math.max(1, Math.round(height))
 
   return (
-    <div
-      className="file-node__preview-halftone"
-      style={{
-        WebkitMaskImage: maskImage,
-        maskImage,
-      }}
-    >
-      <HalftoneCmyk
-        image={src}
-        width={Math.max(1, Math.round(width))}
-        height={Math.max(1, Math.round(height))}
-        maxPixelCount={HALFTONE_MAX_PIXEL_COUNT}
-        speed={0}
-        frame={0}
-        {...HALFTONE_CMYK}
+    <div className="file-node__preview-halftone" style={waveMaskStyle(waveT)}>
+      <PixelGridWaveFallback
+        src={src}
+        width={boxW}
+        height={boxH}
         colorBack={colorBack}
       />
+      {showShader ? (
+        <div className="file-node__preview-halftone-shader">
+          <HalftoneCmyk
+            image={src}
+            width={boxW}
+            height={boxH}
+            maxPixelCount={HALFTONE_MAX_PIXEL_COUNT}
+            speed={0}
+            frame={0}
+            {...HALFTONE_CMYK}
+            colorBack={colorBack}
+            onError={() => setShaderFailed(true)}
+          />
+        </div>
+      ) : null}
     </div>
+  )
+}
+
+/** Visible top→bottom pixel-grid wave when WebGL halftone is unavailable. */
+function PixelGridWaveFallback({
+  src,
+  width,
+  height,
+  colorBack,
+}: {
+  src: string
+  width: number
+  height: number
+  colorBack: string
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    let cancelled = false
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      if (cancelled) return
+      const cell = Math.max(4, Math.round(Math.min(width, height) / 28))
+      const cols = Math.ceil(width / cell)
+      const rows = Math.ceil(height / cell)
+      const off = document.createElement('canvas')
+      off.width = cols
+      off.height = rows
+      const octx = off.getContext('2d')
+      if (!octx) return
+      octx.drawImage(img, 0, 0, cols, rows)
+      const data = octx.getImageData(0, 0, cols, rows).data
+
+      ctx.fillStyle = colorBack
+      ctx.fillRect(0, 0, width, height)
+
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          const i = (y * cols + x) * 4
+          const r = data[i]!
+          const g = data[i + 1]!
+          const b = data[i + 2]!
+          const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+          const dot = (1 - lum) * (cell * 0.42)
+          if (dot < 0.6) continue
+          const cx = x * cell + cell / 2
+          const cy = y * cell + cell / 2
+          ctx.fillStyle =
+            lum < 0.35
+              ? HALFTONE_CMYK.colorK
+              : x % 3 === 0
+                ? HALFTONE_CMYK.colorC
+                : x % 3 === 1
+                  ? HALFTONE_CMYK.colorM
+                  : HALFTONE_CMYK.colorY
+          ctx.beginPath()
+          ctx.arc(cx, cy, dot, 0, Math.PI * 2)
+          ctx.fill()
+        }
+      }
+    }
+    img.onerror = () => {
+      if (cancelled || !canvasRef.current) return
+      const c = canvasRef.current.getContext('2d')
+      if (!c) return
+      c.fillStyle = colorBack
+      c.fillRect(0, 0, width, height)
+      c.fillStyle = HALFTONE_CMYK.colorC
+      const cell = 8
+      for (let y = 0; y < height; y += cell) {
+        for (let x = 0; x < width; x += cell) {
+          if ((x + y) % (cell * 2) === 0) {
+            c.fillRect(x, y, cell - 1, cell - 1)
+          }
+        }
+      }
+    }
+    img.src = src
+
+    return () => {
+      cancelled = true
+      img.onload = null
+      img.onerror = null
+    }
+  }, [src, width, height, colorBack])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="file-node__preview-wave-fallback"
+      width={width}
+      height={height}
+      aria-hidden
+    />
   )
 }

@@ -8,8 +8,11 @@ export const WAVE_SOFTNESS = 0.08
  * Vintage CMYK halftone — tuned to match Paper Shaders “halftone-cmyk” demo:
  * https://shaders.paper.design/halftone-cmyk#colorBack=fffaf0&...
  */
+/** Dark canvas match when CSS var is unavailable (SSR / first paint). */
+export const HALFTONE_COLOR_BACK_DARK = '#0a0a0a'
+
 export const HALFTONE_CMYK = {
-  colorBack: '#fffaf0',
+  colorBack: HALFTONE_COLOR_BACK_DARK,
   colorC: '#59afc5',
   colorM: '#d8697c',
   colorY: '#fad85c',
