@@ -3,49 +3,9 @@ import { Plus } from 'lucide-react'
 import { memo, useState } from 'react'
 import { useCanvasStore, type FolderNodeData } from '../../store/canvasStore'
 
-/** Classic macOS Finder-style folder: bright sky blue body + lighter tab. */
-function FolderGlyph({ gradId }: { gradId: string }) {
-  const tab = `${gradId}-tab`
-  const body = `${gradId}-body`
-  const face = `${gradId}-face`
-  return (
-    <svg className="folder-node__glyph" viewBox="0 0 88 72" aria-hidden>
-      <defs>
-        <linearGradient id={body} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#64D2FF" />
-          <stop offset="55%" stopColor="#5AC8FA" />
-          <stop offset="100%" stopColor="#0A84FF" />
-        </linearGradient>
-        <linearGradient id={tab} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#7DDEFF" />
-          <stop offset="100%" stopColor="#5AC8FA" />
-        </linearGradient>
-        <linearGradient id={face} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#5AC8FA" />
-          <stop offset="100%" stopColor="#007AFF" />
-        </linearGradient>
-      </defs>
-      <path
-        d="M10 20c0-3.3 2.7-6 6-6h16.5l7 7H72c3.3 0 6 2.7 6 6v2H10v-9z"
-        fill={`url(#${tab})`}
-      />
-      <path
-        d="M8 28c0-2.2 1.8-4 4-4h64c2.2 0 4 1.8 4 4v30c0 3.3-2.7 6-6 6H14c-3.3 0-6-2.7-6-6V28z"
-        fill={`url(#${body})`}
-      />
-      <path
-        d="M8 34h72v24c0 3.3-2.7 6-6 6H14c-3.3 0-6-2.7-6-6V34z"
-        fill={`url(#${face})`}
-        opacity="0.92"
-      />
-      <path
-        d="M10 34h68c0 0-2 3-34 3S10 34 10 34z"
-        fill="#FFFFFF"
-        opacity="0.18"
-      />
-    </svg>
-  )
-}
+/** Display size for the macOS folder PNG (source 1004×854). */
+const ICON_W = 96
+const ICON_H = Math.round((ICON_W * 854) / 1004)
 
 function FolderNodeComponent({ id, data }: NodeProps & { data: FolderNodeData }) {
   const { zoom } = useViewport()
@@ -56,10 +16,13 @@ function FolderNodeComponent({ id, data }: NodeProps & { data: FolderNodeData })
   const [hovered, setHovered] = useState(false)
   const counter = 1 / Math.max(zoom, 0.01)
   const showHoverChrome = hovered && !draftOpen
+  /** Vertical mid of the icon — where edges should meet. */
+  const iconMidY = ICON_H / 2
 
   return (
     <div
       className={`folder-node${showHoverChrome ? ' is-hovered' : ''}`}
+      style={{ width: ICON_W }}
       onMouseEnter={() => {
         if (!draftOpen) setHovered(true)
       }}
@@ -72,41 +35,69 @@ function FolderNodeComponent({ id, data }: NodeProps & { data: FolderNodeData })
       onClick={(e) => {
         if (draftOpen) return
         if ((e.target as HTMLElement).closest('.folder-node__plus')) return
+        if ((e.target as HTMLElement).closest('.folder-node__toolbar')) return
         enterFolder(data.folderId)
       }}
     >
-      <FolderGlyph gradId={`fg-${id}`} />
-      <div className="folder-node__label" style={{ transform: `scale(${counter})` }}>
+      <div className="folder-node__glyph-wrap" style={{ width: ICON_W, height: ICON_H }}>
+        <img
+          className="folder-node__glyph"
+          src="/folder-icon.png"
+          alt=""
+          width={ICON_W}
+          height={ICON_H}
+          draggable={false}
+          decoding="async"
+        />
+
+        {/* Handles sit on the icon’s left/right edges at vertical mid — not the label box. */}
+        <Handle
+          type="target"
+          position={Position.Left}
+          id="in"
+          className="folder-node__handle"
+          style={{ top: iconMidY, left: 0 }}
+        />
+        <Handle
+          type="source"
+          position={Position.Right}
+          id="out"
+          className="folder-node__handle"
+          style={{ top: iconMidY, right: 0, left: 'auto' }}
+        />
+
+        {!draftOpen && (
+          <button
+            type="button"
+            className="folder-node__plus"
+            style={{
+              top: iconMidY,
+              transform: `translateY(-50%) scale(${counter})`,
+            }}
+            aria-label="Convert folder"
+            onClick={(e) => {
+              e.stopPropagation()
+              startConnect(id, { x: 0, y: 0 })
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <Plus size={16} strokeWidth={2.25} />
+          </button>
+        )}
+      </div>
+
+      <div
+        className="folder-node__label"
+        style={{ transform: `scale(${counter})` }}
+      >
         {data.label}
       </div>
 
-      <Handle type="target" position={Position.Left} id="in" />
-      <Handle type="source" position={Position.Right} id="out" />
-
-      {!draftOpen && (
-        <button
-          type="button"
-          className="folder-node__plus"
-          style={{ transform: `scale(${counter})` }}
-          aria-label="Convert folder"
-          onClick={(e) => {
-            e.stopPropagation()
-            startConnect(id, { x: 0, y: 0 })
-          }}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          <Plus size={16} strokeWidth={2.25} />
-        </button>
-      )}
-
       {data.isResult && !draftOpen && (
         <div
-          className="file-node__toolbar"
+          className={`folder-node__toolbar${showHoverChrome ? ' is-visible' : ''}`}
           style={{
-            opacity: showHoverChrome ? 1 : 0,
-            pointerEvents: showHoverChrome ? 'auto' : 'none',
-            bottom: -40,
-            transform: `translateX(-50%) scale(${counter})`,
+            transform: `translate(-50%, calc(-100% - 8px)) scale(${counter})`,
           }}
           onMouseEnter={() => setHovered(true)}
         >

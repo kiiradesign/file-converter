@@ -58,6 +58,7 @@ const PANEL_NODE_GAP = 10
 function visibleNodeBodyEl(rfNodeEl: Element): Element {
   return (
     rfNodeEl.querySelector('.file-node__card') ??
+    rfNodeEl.querySelector('.folder-node__glyph-wrap') ??
     rfNodeEl.querySelector('.folder-node__glyph') ??
     rfNodeEl.querySelector('.folder-node') ??
     rfNodeEl
