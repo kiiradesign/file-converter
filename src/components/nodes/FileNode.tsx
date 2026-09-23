@@ -25,7 +25,11 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
     : file?.previewUrl || file?.objectUrl || null
   const outputSrc =
     file?.objectUrl && (file.size ?? 0) > 0 ? file.objectUrl : null
-  const src = outputSrc || previewSrc
+  const converting =
+    data.isResult &&
+    (data.conversionWavePending === true || data.jobStatus === 'running')
+  /** Never pass output blob as display src while the conversion wave is active. */
+  const src = converting ? previewSrc : outputSrc || previewSrc
   const showHoverChrome = hovered && !draftOpen
 
   // Save on result nodes and on files inside a converted result folder.

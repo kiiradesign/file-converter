@@ -1,12 +1,12 @@
-import { HalftoneCmyk } from '@paper-design/shaders-react'
+import { ImageDithering } from '@paper-design/shaders-react'
 import { animate } from 'motion'
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { DitherCanvasFallback, PixelationWave } from './PixelationWave'
 import {
-  HALFTONE_CMYK,
-  HALFTONE_COLOR_BACK_DARK,
-  HALFTONE_MAX_PIXEL_COUNT,
+  DITHER_MAX_PIXEL_COUNT,
+  IMAGE_DITHERING,
+  REVEAL_DURATION_S,
   WAVE_DURATION_S,
-  WAVE_SOFTNESS,
 } from './pixelationWaveConfig'
 
 interface Props {
@@ -21,7 +21,7 @@ interface Props {
   mimeType?: string
   isResult?: boolean
   jobStatus?: 'idle' | 'running' | 'done' | 'error'
-  /** When true, play the fixed 1s halftone wave (independent of encode progress). */
+  /** When true, play the fixed 1s dither wave (independent of encode progress). */
   conversionWavePending?: boolean
   onWaveComplete?: () => void
   onNaturalSize?: (width: number, height: number) => void
@@ -44,9 +44,8 @@ function canUseWebGL(): boolean {
 }
 
 /**
- * Node preview: full-resolution <img> underneath; CMYK halftone wave overlay while converting.
- * The wave always runs for exactly WAVE_DURATION_S; encode speed only affects when the final
- * output URL is swapped in (after the wave finishes and the job has output).
+ * Node preview: during conversion, only dithered source + pixel grid wave (no output blob).
+ * After wave + encode, crossfade to the real converted image.
  */
 export function PixelationPreview({
   src,
@@ -79,16 +78,16 @@ export function PixelationPreview({
   }
 
   const jobDone = jobStatus === 'done' && !!outputSrc
-  /** Play wave for the full 1s once a result conversion starts (flag or running job). */
   const waveEligible =
     !!isResult &&
     jobStatus !== 'error' &&
     (conversionWavePending === true || jobStatus === 'running')
 
+  const sourcePreview = previewSrc ?? src ?? ''
+
   return (
     <ConversionPreviewImage
-      fallbackSrc={src ?? previewSrc ?? ''}
-      previewSrc={previewSrc ?? src ?? ''}
+      sourcePreview={sourcePreview}
       outputSrc={outputSrc}
       jobDone={jobDone}
       waveEligible={waveEligible}
@@ -101,8 +100,7 @@ export function PixelationPreview({
 }
 
 function ConversionPreviewImage({
-  fallbackSrc,
-  previewSrc,
+  sourcePreview,
   outputSrc,
   jobDone,
   waveEligible,
@@ -111,8 +109,7 @@ function ConversionPreviewImage({
   onNaturalSize,
   onWaveComplete,
 }: {
-  fallbackSrc: string
-  previewSrc: string
+  sourcePreview: string
   outputSrc?: string | null
   jobDone: boolean
   waveEligible: boolean
@@ -123,7 +120,10 @@ function ConversionPreviewImage({
 }) {
   const [waveT, setWaveT] = useState(0)
   const [waveFinished, setWaveFinished] = useState(!waveEligible)
+  const [revealT, setRevealT] = useState(0)
+  const [revealDone, setRevealDone] = useState(!waveEligible)
   const waveSessionRef = useRef(0)
+  const revealSessionRef = useRef(0)
   const onWaveCompleteRef = useRef(onWaveComplete)
   onWaveCompleteRef.current = onWaveComplete
   const reducedMotion = useMemo(
@@ -137,6 +137,8 @@ function ConversionPreviewImage({
     if (!waveEligible) {
       setWaveT(1)
       setWaveFinished(true)
+      setRevealT(1)
+      setRevealDone(true)
       return
     }
 
@@ -144,6 +146,8 @@ function ConversionPreviewImage({
     const session = waveSessionRef.current
     setWaveT(0)
     setWaveFinished(false)
+    setRevealT(0)
+    setRevealDone(false)
 
     if (reducedMotion) {
       const t = window.setTimeout(() => {
@@ -172,90 +176,130 @@ function ConversionPreviewImage({
     return () => ctrl.stop()
   }, [waveEligible, reducedMotion])
 
-  const showResult = waveFinished && jobDone && !!outputSrc
-  const underlaySrc = previewSrc || fallbackSrc
-  const displaySrc = showResult ? outputSrc! : underlaySrc
-  const showWave = waveEligible && !waveFinished
+  useEffect(() => {
+    if (!waveFinished || !jobDone || !outputSrc) return
+
+    revealSessionRef.current += 1
+    const session = revealSessionRef.current
+    setRevealT(0)
+    setRevealDone(false)
+
+    if (reducedMotion) {
+      setRevealT(1)
+      setRevealDone(true)
+      return
+    }
+
+    const ctrl = animate(0, 1, {
+      duration: REVEAL_DURATION_S,
+      ease: [0.4, 0, 0.2, 1],
+      onUpdate: (v) => {
+        if (session !== revealSessionRef.current) return
+        setRevealT(v)
+      },
+      onComplete: () => {
+        if (session !== revealSessionRef.current) return
+        setRevealT(1)
+        setRevealDone(true)
+      },
+    })
+    return () => ctrl.stop()
+  }, [waveFinished, jobDone, outputSrc, reducedMotion])
+
+  const showResult = revealDone && jobDone && !!outputSrc
+  const showOverlay = waveEligible && !revealDone
+  const revealing = showOverlay && waveFinished && jobDone && !!outputSrc
+  const overlayOpacity = revealing ? 1 - revealT : showOverlay ? 1 : 0
   const useShader = canUseWebGL()
+  const boxW = Math.max(1, Math.round(width))
+  const boxH = Math.max(1, Math.round(height))
+
+  const finalSrc = showResult && outputSrc ? outputSrc : sourcePreview
+  const showFinalImg = !showOverlay
 
   return (
     <div className="file-node__preview" style={{ width: '100%', height: '100%' }}>
-      <img
-        key={showWave ? underlaySrc : displaySrc}
-        src={showWave ? underlaySrc : displaySrc}
-        alt=""
-        draggable={false}
-        decoding="async"
-        className="file-node__preview-img"
-        onLoad={(e) => {
-          const img = e.currentTarget
-          if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-            onNaturalSize?.(img.naturalWidth, img.naturalHeight)
-          }
-        }}
-      />
-      {showWave && (
-        <HalftoneWaveOverlay
-          src={underlaySrc}
-          width={width}
-          height={height}
+      {showFinalImg && (
+        <img
+          key={finalSrc}
+          src={finalSrc}
+          alt=""
+          draggable={false}
+          decoding="async"
+          className="file-node__preview-img"
+          onLoad={(e) => {
+            const img = e.currentTarget
+            if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+              onNaturalSize?.(img.naturalWidth, img.naturalHeight)
+            }
+          }}
+        />
+      )}
+      {revealing && outputSrc && (
+        <img
+          key={outputSrc}
+          src={outputSrc}
+          alt=""
+          draggable={false}
+          decoding="async"
+          className="file-node__preview-img"
+          style={{ opacity: revealT }}
+          onLoad={(e) => {
+            const img = e.currentTarget
+            if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+              onNaturalSize?.(img.naturalWidth, img.naturalHeight)
+            }
+          }}
+        />
+      )}
+      {showOverlay && sourcePreview && (
+        <DitherWaveOverlay
+          src={sourcePreview}
+          width={boxW}
+          height={boxH}
           waveT={waveT}
+          revealT={revealT}
+          opacity={overlayOpacity}
           useShader={useShader}
+        />
+      )}
+      {!showFinalImg && !revealing && sourcePreview && (
+        <img
+          src={sourcePreview}
+          alt=""
+          className="file-node__preview-img file-node__preview-img--probe"
+          aria-hidden
+          onLoad={(e) => {
+            const img = e.currentTarget
+            if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+              onNaturalSize?.(img.naturalWidth, img.naturalHeight)
+            }
+          }}
         />
       )}
     </div>
   )
 }
 
-function subscribeTheme(onStoreChange: () => void) {
-  const obs = new MutationObserver(onStoreChange)
-  obs.observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ['data-theme'],
-  })
-  return () => obs.disconnect()
-}
-
-function readHalftoneBack(): string {
-  const v = getComputedStyle(document.documentElement)
-    .getPropertyValue('--fc-halftone-back')
-    .trim()
-  return v || HALFTONE_CMYK.colorBack || HALFTONE_COLOR_BACK_DARK
-}
-
-function waveMaskStyle(waveT: number): React.CSSProperties {
-  const reveal = Math.min(1, Math.max(0, waveT))
-  const softPct = WAVE_SOFTNESS * 100
-  const frontPct = reveal * 100
-  const maskImage = `linear-gradient(to bottom, black 0%, black ${Math.max(0, frontPct - softPct)}%, transparent ${Math.min(100, frontPct + softPct)}%, transparent 100%)`
-  return {
-    WebkitMaskImage: maskImage,
-    maskImage,
-  }
-}
-
-function HalftoneWaveOverlay({
+function DitherWaveOverlay({
   src,
   width,
   height,
   waveT,
+  revealT,
+  opacity,
   useShader,
 }: {
   src: string
   width: number
   height: number
   waveT: number
+  revealT: number
+  opacity: number
   useShader: boolean
 }) {
-  const colorBack = useSyncExternalStore(
-    subscribeTheme,
-    readHalftoneBack,
-    () => HALFTONE_COLOR_BACK_DARK,
-  )
   const [shaderFailed, setShaderFailed] = useState(false)
   const [sourceReady, setSourceReady] = useState(false)
-  const boxW = Math.max(1, Math.round(width))
-  const boxH = Math.max(1, Math.round(height))
 
   useEffect(() => {
     if (!src) {
@@ -265,6 +309,9 @@ function HalftoneWaveOverlay({
     let cancelled = false
     setSourceReady(false)
     const img = new Image()
+    if (!src.startsWith('blob:') && !src.startsWith('data:')) {
+      img.crossOrigin = 'anonymous'
+    }
     img.onload = () => {
       if (!cancelled) setSourceReady(true)
     }
@@ -285,130 +332,34 @@ function HalftoneWaveOverlay({
   const showShader = useShader && !shaderFailed && sourceReady
 
   return (
-    <div className="file-node__preview-halftone" style={waveMaskStyle(waveT)}>
-      {showShader ? (
+    <div
+      className="file-node__preview-halftone"
+      style={{ opacity, transition: opacity < 1 ? 'none' : undefined }}
+    >
+      {!showShader ? (
+        <DitherCanvasFallback src={src} width={width} height={height} />
+      ) : (
         <div className="file-node__preview-halftone-shader" aria-hidden>
-          <HalftoneCmyk
+          <ImageDithering
             image={src}
-            width={boxW}
-            height={boxH}
-            maxPixelCount={HALFTONE_MAX_PIXEL_COUNT}
+            width={width}
+            height={height}
+            maxPixelCount={DITHER_MAX_PIXEL_COUNT}
             speed={0}
             frame={0}
-            {...HALFTONE_CMYK}
-            colorBack={colorBack}
+            {...IMAGE_DITHERING}
             onError={() => setShaderFailed(true)}
           />
         </div>
-      ) : null}
-      <PixelGridWaveFallback
+      )}
+      <PixelationWave
         src={src}
-        width={boxW}
-        height={boxH}
-        colorBack={colorBack}
+        width={width}
+        height={height}
+        waveT={waveT}
+        revealT={revealT}
+        showGrid
       />
     </div>
-  )
-}
-
-/** Visible top→bottom pixel-grid wave when WebGL halftone is unavailable. */
-function PixelGridWaveFallback({
-  src,
-  width,
-  height,
-  colorBack,
-}: {
-  src: string
-  width: number
-  height: number
-  colorBack: string
-}) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    let cancelled = false
-    const img = new Image()
-    if (!src.startsWith('blob:') && !src.startsWith('data:')) {
-      img.crossOrigin = 'anonymous'
-    }
-    img.onload = () => {
-      if (cancelled) return
-      const cell = Math.max(4, Math.round(Math.min(width, height) / 28))
-      const cols = Math.ceil(width / cell)
-      const rows = Math.ceil(height / cell)
-      const off = document.createElement('canvas')
-      off.width = cols
-      off.height = rows
-      const octx = off.getContext('2d')
-      if (!octx) return
-      octx.drawImage(img, 0, 0, cols, rows)
-      const data = octx.getImageData(0, 0, cols, rows).data
-
-      ctx.fillStyle = colorBack
-      ctx.fillRect(0, 0, width, height)
-
-      for (let y = 0; y < rows; y++) {
-        for (let x = 0; x < cols; x++) {
-          const i = (y * cols + x) * 4
-          const r = data[i]!
-          const g = data[i + 1]!
-          const b = data[i + 2]!
-          const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-          const dot = (1 - lum) * (cell * 0.42)
-          if (dot < 0.6) continue
-          const cx = x * cell + cell / 2
-          const cy = y * cell + cell / 2
-          ctx.fillStyle =
-            lum < 0.35
-              ? HALFTONE_CMYK.colorK
-              : x % 3 === 0
-                ? HALFTONE_CMYK.colorC
-                : x % 3 === 1
-                  ? HALFTONE_CMYK.colorM
-                  : HALFTONE_CMYK.colorY
-          ctx.beginPath()
-          ctx.arc(cx, cy, dot, 0, Math.PI * 2)
-          ctx.fill()
-        }
-      }
-    }
-    img.onerror = () => {
-      if (cancelled || !canvasRef.current) return
-      const c = canvasRef.current.getContext('2d')
-      if (!c) return
-      c.fillStyle = colorBack
-      c.fillRect(0, 0, width, height)
-      c.fillStyle = HALFTONE_CMYK.colorC
-      const cell = 8
-      for (let y = 0; y < height; y += cell) {
-        for (let x = 0; x < width; x += cell) {
-          if ((x + y) % (cell * 2) === 0) {
-            c.fillRect(x, y, cell - 1, cell - 1)
-          }
-        }
-      }
-    }
-    img.src = src
-
-    return () => {
-      cancelled = true
-      img.onload = null
-      img.onerror = null
-    }
-  }, [src, width, height, colorBack])
-
-  return (
-    <canvas
-      ref={canvasRef}
-      className="file-node__preview-wave-fallback"
-      width={width}
-      height={height}
-      aria-hidden
-    />
   )
 }
