@@ -1,4 +1,4 @@
-import { DialRoot, useDialKit } from 'dialkit'
+import { Slider } from 'dialkit'
 import { useStore, useViewport, type Node } from '@xyflow/react'
 import { ArrowLeft } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
@@ -7,39 +7,43 @@ import { useCanvasStore, type AppNode } from '../store/canvasStore'
 import type { ConvertFormat } from '../types'
 import 'dialkit/styles.css'
 
-function DialSliders({ draftKey }: { draftKey: string }) {
-  const updateDraftSettings = useCanvasStore((s) => s.updateDraftSettings)
+/** Both sliders share 1–100 so equal values land at the same fill position. */
+const SLIDER_MIN = 1
+const SLIDER_MAX = 100
+const SLIDER_STEP = 1
+
+function ConvertSliders() {
+  const theme = useCanvasStore((s) => s.theme)
   const draft = useCanvasStore((s) => s.draft)
-  const last = useRef({ q: -1, r: -1 })
+  const updateDraftSettings = useCanvasStore((s) => s.updateDraftSettings)
+
+  if (!draft) return null
 
   // TODO: File size slider (dynamic cap + lock quality/resolution) — stubbed/hidden for now.
-  // persist.presets: false — do not store Dialkit version presets.
-  const values = useDialKit(
-    'Settings',
-    {
-      Quality: [draft?.settings.quality ?? 100, 1, 100, 1],
-      Resolution: [draft?.settings.resolution ?? 100, 10, 100, 1],
-    },
-    {
-      id: `convert-draft-${draftKey}`,
-      persist: false,
-      defaultCollapsed: false,
-    },
+  return (
+    <div className="dialkit-root dial-host" data-theme={theme}>
+      <Slider
+        label="Quality"
+        value={draft.settings.quality}
+        min={SLIDER_MIN}
+        max={SLIDER_MAX}
+        step={SLIDER_STEP}
+        onChange={(quality) =>
+          updateDraftSettings({ quality, maxBytes: null })
+        }
+      />
+      <Slider
+        label="Resolution"
+        value={draft.settings.resolution}
+        min={SLIDER_MIN}
+        max={SLIDER_MAX}
+        step={SLIDER_STEP}
+        onChange={(resolution) =>
+          updateDraftSettings({ resolution, maxBytes: null })
+        }
+      />
+    </div>
   )
-
-  useEffect(() => {
-    const q = values.Quality
-    const r = values.Resolution
-    if (last.current.q === q && last.current.r === r) return
-    last.current = { q, r }
-    updateDraftSettings({
-      quality: q,
-      resolution: r,
-      maxBytes: null,
-    })
-  }, [values.Quality, values.Resolution, updateDraftSettings])
-
-  return null
 }
 
 const PANEL_W = 280
@@ -160,8 +164,6 @@ export function ConnectionPanel() {
       ? estimateSize(files[source.data.fileId]?.size ?? 0, draft.settings)
       : null
 
-  const dialKey = `${draft.sourceNodeId}-${draft.mode}-${draft.settings.format}`
-
   return (
     <div
       ref={panelRef}
@@ -220,10 +222,7 @@ export function ConnectionPanel() {
             </h3>
           </div>
 
-          <div className="dial-host dial-host--no-versions">
-            <DialRoot mode="inline" theme="dark" productionEnabled defaultOpen />
-            <DialSliders draftKey={dialKey} />
-          </div>
+          <ConvertSliders />
 
           <div className="size-hint">
             {estimated != null

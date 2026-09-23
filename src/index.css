@@ -828,7 +828,10 @@ button {
   --dial-text-section: var(--fc-text-muted);
   --dial-text-label: var(--fc-text-muted);
   --dial-text-secondary: var(--fc-text-muted);
+  --dial-text-primary: var(--fc-text);
+  --dial-text-focus: var(--fc-text);
   --dial-border: var(--fc-border);
+  --dial-border-hover: var(--fc-border-strong);
   --dial-glass-bg: var(--fc-surface);
   --dial-radius: 8px;
   --dial-row-height: 36px;
@@ -848,7 +851,8 @@ button {
   -webkit-font-smoothing: antialiased;
 }
 
-[data-theme='light'] .connection-panel {
+/* Re-apply Geist dial tokens on .dialkit-root (it resets them by default). */
+.connection-panel .dialkit-root {
   --dial-surface: var(--fc-row);
   --dial-surface-hover: var(--fc-surface-hover);
   --dial-surface-active: var(--fc-surface-active);
@@ -857,7 +861,31 @@ button {
   --dial-text-section: var(--fc-text-muted);
   --dial-text-label: var(--fc-text-muted);
   --dial-text-secondary: var(--fc-text-muted);
+  --dial-text-primary: var(--fc-text);
+  --dial-text-focus: var(--fc-text);
   --dial-border: var(--fc-border);
+  --dial-border-hover: var(--fc-border-strong);
+  --dial-glass-bg: var(--fc-surface);
+  --dial-radius: 8px;
+  --dial-row-height: 36px;
+  --dial-row-gap: 6px;
+  --dial-shadow: none;
+}
+
+[data-theme='light'] .connection-panel,
+[data-theme='light'] .connection-panel .dialkit-root {
+  --dial-surface: var(--fc-row);
+  --dial-surface-hover: var(--fc-surface-hover);
+  --dial-surface-active: var(--fc-surface-active);
+  --dial-surface-subtle: var(--fc-border);
+  --dial-text-root: var(--fc-text);
+  --dial-text-section: var(--fc-text-muted);
+  --dial-text-label: var(--fc-text-muted);
+  --dial-text-secondary: var(--fc-text-muted);
+  --dial-text-primary: var(--fc-text);
+  --dial-text-focus: var(--fc-text);
+  --dial-border: var(--fc-border);
+  --dial-border-hover: var(--fc-border-strong);
   --dial-glass-bg: var(--fc-surface);
 }
 
@@ -1021,83 +1049,16 @@ button {
 }
 
 .connection-panel .dial-host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dial-row-gap);
   min-height: 0;
   margin: 0 0 4px;
-}
-
-.connection-panel .dial-host .dk-root,
-.connection-panel .dial-host .dialkit-root,
-.connection-panel .dial-host [class*='DialRoot'] {
-  position: relative !important;
-  inset: auto !important;
-  width: 100% !important;
-  box-shadow: none !important;
-  border: none !important;
-  background: transparent !important;
-}
-
-/* Flatten Dialkit’s own panel chrome — we already provide the outer shell + title. */
-.connection-panel .dial-host--no-versions .dialkit-panel,
-.connection-panel .dial-host--no-versions .dialkit-panel-wrapper,
-.connection-panel .dial-host--no-versions .dialkit-panel-inline {
-  position: static !important;
-  width: 100% !important;
-  max-height: none !important;
-  height: auto !important;
-  overflow: visible !important;
-}
-
-.connection-panel .dial-host--no-versions .dialkit-panel-inner {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  padding: 0 !important;
-  border-radius: 0 !important;
-  max-height: none !important;
-  overflow: visible !important;
-}
-
-/* Collapse Dialkit section header + versions/clipboard toolbar (source of the gap). */
-.connection-panel .dial-host--no-versions .dialkit-panel-header,
-.connection-panel .dial-host--no-versions .dialkit-folder-section > .dialkit-folder-header,
-.connection-panel .dial-host--no-versions .dialkit-panel-section-toolbar-clip,
-.connection-panel .dial-host--no-versions .dialkit-panel-section-toolbar,
-.connection-panel .dial-host--no-versions .dialkit-panel-toolbar,
-.connection-panel .dial-host--no-versions .dialkit-preset-manager,
-.connection-panel .dial-host--no-versions .dialkit-toolbar-copy,
-.connection-panel .dial-host--no-versions .dialkit-folder-copy,
-.connection-panel .dial-host--no-versions button[title='Copy parameters'],
-.connection-panel .dial-host--no-versions button[aria-label='Copy parameters'],
-.connection-panel .dial-host--no-versions button[aria-label='Copied parameters'],
-.connection-panel .dial-host--no-versions .dialkit-toolbar-add.dialkit-toolbar-primary {
-  display: none !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
-  height: 0 !important;
-  min-height: 0 !important;
-  max-height: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: none !important;
-  overflow: hidden !important;
-}
-
-.connection-panel .dial-host--no-versions .dialkit-folder-section {
-  --dial-section-header-height: 0px;
-  --dial-panel-header-height: 0px;
-}
-
-.connection-panel .dial-host--no-versions .dialkit-folder-root > .dialkit-folder-content > .dialkit-folder-inner,
-.connection-panel .dial-host--no-versions .dialkit-folder-inner {
-  padding: 0 !important;
-  gap: var(--dial-row-gap) !important;
-}
-
-.connection-panel .dial-host--no-versions .dialkit-folder-content {
-  margin: 0 !important;
-  padding: 0 !important;
+  width: 100%;
+  position: relative;
+  background: transparent;
+  box-shadow: none;
+  border: none;
 }
 
 .draft-wire {
