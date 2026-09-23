@@ -7,7 +7,7 @@ import {
   fileThumbnailSrc,
 } from '../../lib/fileDisplaySrc'
 import { previewCardSize } from '../../lib/previewCardSize'
-import { PixelationPreview } from '../PixelationPreview'
+import { ConversionPreview } from '../ConversionPreview'
 
 function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
   const { zoom } = useViewport()
@@ -137,7 +137,7 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
         style={{ width: card.width, height: card.height }}
       >
         <div className="file-node__card-media">
-          <PixelationPreview
+          <ConversionPreview
             src={src}
             previewSrc={previewSrc}
             outputSrc={outputSrc}

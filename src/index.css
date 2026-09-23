@@ -577,7 +577,7 @@ button {
   z-index: -1;
 }
 
-.file-node__preview-webgl {
+.file-node__preview-shader {
   position: absolute;
   inset: 0;
   z-index: 1;
@@ -595,20 +595,10 @@ button {
   transform-origin: center center;
 }
 
-.file-node__preview-webgl canvas {
+.file-node__preview-shader canvas {
   width: 100% !important;
   height: 100% !important;
   display: block;
-}
-
-.file-node__preview-dither-capture {
-  position: fixed;
-  left: -9999px;
-  top: 0;
-  opacity: 0;
-  pointer-events: none;
-  overflow: hidden;
-  box-sizing: border-box;
 }
 
 .file-node__preview-img--result {
