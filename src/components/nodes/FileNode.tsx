@@ -54,12 +54,14 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
   const startAdjust = useCanvasStore((s) => s.startAdjust)
   const saveNode = useCanvasStore((s) => s.saveNode)
   const setFileDimensions = useCanvasStore((s) => s.setFileDimensions)
+  const finishConversionWave = useCanvasStore((s) => s.finishConversionWave)
   const [hovered, setHovered] = useState(false)
 
   const counter = 1 / Math.max(zoom, 0.01)
-  const running = data.jobStatus === 'running'
   /** Prefer output blob URL when present; during conversion use source preview on placeholder. */
-  const src = file?.objectUrl || file?.previewUrl || null
+  const previewSrc = file?.previewUrl || file?.objectUrl || null
+  const outputSrc = file?.objectUrl || null
+  const src = outputSrc || previewSrc
   const showHoverChrome = hovered && !draftOpen
 
   // Save on result nodes and on files inside a converted result folder.
@@ -91,6 +93,9 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
     },
     [file, setFileDimensions],
   )
+  const onWaveComplete = useCallback(() => {
+    finishConversionWave(id)
+  }, [finishConversionWave, id])
   const onPlus = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
@@ -166,16 +171,15 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
         <div className="file-node__card-media">
           <PixelationPreview
             src={src}
+            previewSrc={previewSrc}
+            outputSrc={outputSrc}
             width={card.width}
             height={card.height}
             mimeType={file?.mimeType}
-            progress={data.jobProgress ?? (data.jobStatus === 'done' ? 1 : 0)}
-            active={
-              running ||
-              (data.isResult &&
-                (data.jobProgress ?? 0) < 1 &&
-                data.jobStatus !== 'error')
-            }
+            isResult={data.isResult}
+            jobStatus={data.jobStatus}
+            conversionWavePending={data.conversionWavePending}
+            onWaveComplete={onWaveComplete}
             onNaturalSize={onNaturalSize}
           />
         </div>

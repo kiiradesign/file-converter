@@ -2,7 +2,7 @@
 export const WAVE_DURATION_S = 1
 
 /** Soft band at the wave front as a fraction of preview height (0–0.2). */
-export const WAVE_SOFTNESS = 0.06
+export const WAVE_SOFTNESS = 0.04
 
 /**
  * Vintage CMYK halftone — tuned to match Paper Shaders “halftone-cmyk” demo:
@@ -18,7 +18,7 @@ export const HALFTONE_CMYK = {
   gridNoise: 0.45,
   type: 'sharp' as const,
   softness: 0.4,
-  contrast: 1.25,
+  contrast: 1.45,
   floodC: 0.15,
   floodM: 0,
   floodY: 0,

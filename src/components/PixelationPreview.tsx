@@ -10,27 +10,38 @@ import {
 
 interface Props {
   src: string | null
+  /** Source preview URL while a conversion result is pending (usually previewUrl). */
+  previewSrc?: string | null
+  /** Converted blob URL when the job has finished. */
+  outputSrc?: string | null
   /** Display box size (CSS); source image stays full-resolution via <img>. */
   width: number
   height: number
-  progress: number
-  active: boolean
-  /** Optional mime — PDFs etc. skip bitmap preview. */
   mimeType?: string
-  /** Fired once with the decoded intrinsic size (for aspect-correct cards). */
+  isResult?: boolean
+  jobStatus?: 'idle' | 'running' | 'done' | 'error'
+  /** When true, play the fixed 1s halftone wave (independent of encode progress). */
+  conversionWavePending?: boolean
+  onWaveComplete?: () => void
   onNaturalSize?: (width: number, height: number) => void
 }
 
 /**
  * Node preview: full-resolution <img> underneath; CMYK halftone wave overlay while converting.
+ * The wave always runs for exactly WAVE_DURATION_S; encode speed only affects when the final
+ * output URL is swapped in (after the wave finishes and the job has output).
  */
 export function PixelationPreview({
   src,
+  previewSrc,
+  outputSrc,
   width,
   height,
-  progress,
-  active,
   mimeType,
+  isResult,
+  jobStatus,
+  conversionWavePending,
+  onWaveComplete,
   onNaturalSize,
 }: Props) {
   const isBitmap =
@@ -38,7 +49,7 @@ export function PixelationPreview({
     mimeType.startsWith('image/') ||
     mimeType === 'application/octet-stream'
 
-  if (!src) {
+  if (!src && !previewSrc) {
     return <div className="file-node__placeholder" style={{ width: '100%', height: '100%' }} />
   }
 
@@ -50,12 +61,94 @@ export function PixelationPreview({
     )
   }
 
-  const showWave = active && progress < 1
+  const jobDone = jobStatus === 'done' && !!outputSrc
+  const waveEligible =
+    !!isResult && jobStatus !== 'error' && !!conversionWavePending
+
+  return (
+    <ConversionPreviewImage
+      fallbackSrc={src ?? previewSrc ?? ''}
+      previewSrc={previewSrc ?? src ?? ''}
+      outputSrc={outputSrc}
+      jobDone={jobDone}
+      waveEligible={waveEligible}
+      width={width}
+      height={height}
+      onNaturalSize={onNaturalSize}
+      onWaveComplete={onWaveComplete}
+    />
+  )
+}
+
+function ConversionPreviewImage({
+  fallbackSrc,
+  previewSrc,
+  outputSrc,
+  jobDone,
+  waveEligible,
+  width,
+  height,
+  onNaturalSize,
+  onWaveComplete,
+}: {
+  fallbackSrc: string
+  previewSrc: string
+  outputSrc?: string | null
+  jobDone: boolean
+  waveEligible: boolean
+  width: number
+  height: number
+  onNaturalSize?: (width: number, height: number) => void
+  onWaveComplete?: () => void
+}) {
+  const [waveT, setWaveT] = useState(0)
+  const [waveFinished, setWaveFinished] = useState(!waveEligible)
+  const reducedMotion = useMemo(
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    [],
+  )
+
+  useEffect(() => {
+    if (!waveEligible) {
+      setWaveT(1)
+      setWaveFinished(true)
+      return
+    }
+
+    setWaveT(0)
+    setWaveFinished(false)
+
+    if (reducedMotion) {
+      setWaveT(1)
+      setWaveFinished(true)
+      onWaveComplete?.()
+      return
+    }
+
+    const ctrl = animate(0, 1, {
+      duration: WAVE_DURATION_S,
+      ease: [0.35, 0, 0.25, 1],
+      onUpdate: (v) => setWaveT(v),
+      onComplete: () => {
+        setWaveT(1)
+        setWaveFinished(true)
+        onWaveComplete?.()
+      },
+    })
+    return () => ctrl.stop()
+  }, [waveEligible, reducedMotion, onWaveComplete])
+
+  const showResult = waveFinished && jobDone && !!outputSrc
+  const displaySrc = showResult ? outputSrc! : previewSrc || fallbackSrc
+  const showWave = waveEligible && !waveFinished
 
   return (
     <div className="file-node__preview" style={{ width: '100%', height: '100%' }}>
       <img
-        src={src}
+        key={displaySrc}
+        src={displaySrc}
         alt=""
         draggable={false}
         decoding="async"
@@ -69,10 +162,10 @@ export function PixelationPreview({
       />
       {showWave && (
         <HalftoneWaveOverlay
-          src={src}
+          src={previewSrc || fallbackSrc}
           width={width}
           height={height}
-          jobProgress={progress}
+          waveT={waveT}
         />
       )}
     </div>
@@ -83,36 +176,14 @@ function HalftoneWaveOverlay({
   src,
   width,
   height,
-  jobProgress,
+  waveT,
 }: {
   src: string
   width: number
   height: number
-  jobProgress: number
+  waveT: number
 }) {
-  const [waveT, setWaveT] = useState(0)
-  const reducedMotion = useMemo(
-    () =>
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-    [],
-  )
-
-  useEffect(() => {
-    setWaveT(0)
-    if (reducedMotion) {
-      setWaveT(1)
-      return
-    }
-    const ctrl = animate(0, 1, {
-      duration: WAVE_DURATION_S,
-      ease: [0.35, 0, 0.25, 1],
-      onUpdate: (v) => setWaveT(v),
-    })
-    return () => ctrl.stop()
-  }, [src, reducedMotion])
-
-  const reveal = Math.min(1, Math.max(waveT, jobProgress))
+  const reveal = Math.min(1, Math.max(0, waveT))
   const softPct = WAVE_SOFTNESS * 100
   const frontPct = reveal * 100
   const maskImage = `linear-gradient(to bottom, transparent 0%, transparent ${Math.max(0, frontPct - softPct)}%, black ${Math.min(100, frontPct + softPct)}%, black 100%)`

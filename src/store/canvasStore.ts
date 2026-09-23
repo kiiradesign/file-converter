@@ -47,6 +47,8 @@ export type FileNodeData = {
   settings?: ConvertSettings
   jobStatus?: 'idle' | 'running' | 'done' | 'error'
   jobProgress?: number
+  /** True while the 1s halftone reveal should play (cleared when wave finishes). */
+  conversionWavePending?: boolean
   sourceNodeId?: string
 }
 
@@ -121,6 +123,7 @@ interface CanvasState {
   saveNode: (nodeId: string) => Promise<void>
   /** Patch intrinsic pixel size once the browser (or HEIC decode) reports it. */
   setFileDimensions: (fileId: string, width: number, height: number) => void
+  finishConversionWave: (nodeId: string) => void
 }
 
 function uid(prefix: string) {
@@ -499,6 +502,16 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       }
     })
   },
+
+  finishConversionWave: (nodeId) => {
+    set((s) => ({
+      nodes: s.nodes.map((n) =>
+        n.id === nodeId && n.data.kind === 'file' && n.data.conversionWavePending
+          ? { ...n, data: { ...n.data, conversionWavePending: false } }
+          : n,
+      ),
+    }))
+  },
 }))
 
 type Get = () => CanvasState
@@ -564,6 +577,7 @@ async function convertFileNode(
           settings,
           jobStatus: 'running',
           jobProgress: 0,
+          conversionWavePending: true,
           sourceNodeId: sourceNode.id,
         },
       },
