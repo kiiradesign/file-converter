@@ -5,7 +5,7 @@ import {
   mimeForExtension,
   normalizeExtension,
 } from '../convert/formats'
-import { heicToPreview, isHeicExtension } from '../convert/web/heic'
+import { heicToPreview, isHeicSource } from '../convert/web/heic'
 import { probeImageSize } from '../convert/web/image'
 import { isSvgExtension, svgToPreview } from '../convert/web/svg'
 import type { FileEntry, FolderEntry } from '../types'
@@ -44,7 +44,7 @@ export async function createFileEntry(file: File, id = uid('file')): Promise<Fil
     size: file.size,
   }
 
-  if (isHeicExtension(extension)) {
+  if (isHeicSource(extension, file.type)) {
     // Browsers cannot paint HEIC in <img> — decode a JPEG preview once at ingest.
     try {
       const preview = await heicToPreview(file)

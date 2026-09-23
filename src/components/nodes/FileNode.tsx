@@ -28,8 +28,15 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
   const converting =
     data.isResult &&
     (data.conversionWavePending === true || data.jobStatus === 'running')
-  /** Never pass output blob as display src while the conversion wave is active. */
-  const src = converting ? previewSrc : outputSrc || previewSrc
+  /**
+   * HEIC/SVG ingest sets previewUrl; objectUrl may be undisplayable in <img>.
+   * Result nodes use the converted output once the wave is idle.
+   */
+  const src = converting
+    ? previewSrc
+    : data.isResult && outputSrc
+      ? outputSrc
+      : file?.previewUrl || outputSrc || previewSrc
   const showHoverChrome = hovered && !draftOpen
 
   // Save on result nodes and on files inside a converted result folder.

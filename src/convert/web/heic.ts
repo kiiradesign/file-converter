@@ -45,6 +45,17 @@ function isHeicExtension(ext: string): boolean {
   return e === 'heic' || e === 'heif'
 }
 
+export function isHeicMime(mime: string | undefined): boolean {
+  if (!mime) return false
+  const m = mime.toLowerCase().split(';')[0]?.trim() ?? ''
+  return m === 'image/heic' || m === 'image/heif'
+}
+
+/** True when the file must be decoded for `<img>` preview (extension or MIME). */
+export function isHeicSource(ext: string, mime?: string): boolean {
+  return isHeicExtension(ext) || isHeicMime(mime)
+}
+
 /** Decode the primary frame of a HEIC/HEIF blob into ImageData (RGBA). */
 export async function decodeHeicToImageData(blob: Blob): Promise<ImageData> {
   const libheif = await loadLibHeif()
