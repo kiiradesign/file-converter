@@ -268,6 +268,27 @@ function CanvasInner() {
     return () => window.removeEventListener('keydown', onKey)
   }, [draft, cancelDraft, confirmDraft])
 
+  /**
+   * While the convert/compress panel is open, any pointerdown on the canvas
+   * (pane, nodes, edges) cancels the draft — same as Cancel. The panel lives
+   * outside `.react-flow`, so its controls are unaffected. Listener attaches
+   * after open, so the Plus/Compress gesture that created the draft is ignored.
+   */
+  useEffect(() => {
+    if (!draft) return
+    const flow = wrapperRef.current?.querySelector('.react-flow')
+    if (!flow) return
+    const onPointerDown = () => {
+      cancelDraft()
+    }
+    flow.addEventListener('pointerdown', onPointerDown)
+    return () => flow.removeEventListener('pointerdown', onPointerDown)
+  }, [draft, cancelDraft])
+
+  const onPaneClick = useCallback(() => {
+    setFloatingAdd(null)
+  }, [])
+
   return (
     <div
       ref={wrapperRef}
@@ -303,7 +324,7 @@ function CanvasInner() {
         onMove={onMove}
         onMoveEnd={onMoveEnd}
         onDoubleClick={onDoubleClick}
-        onPaneClick={() => setFloatingAdd(null)}
+        onPaneClick={onPaneClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         proOptions={{ hideAttribution: true }}
