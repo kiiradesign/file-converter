@@ -65,7 +65,12 @@
 @property --fc-preview {
   syntax: '<color>';
   inherits: true;
-  initial-value: #e5e5e5;
+  initial-value: #171717;
+}
+@property --fc-halftone-back {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #171717;
 }
 @property --fc-wire {
   syntax: '<color>';
@@ -95,7 +100,8 @@
   --fc-text-muted: #888888;
   --fc-text-subtle: #666666;
   --fc-dot: #333333;
-  --fc-preview: #e5e5e5;
+  --fc-preview: #171717;
+  --fc-halftone-back: #171717;
   --fc-wire: #666666;
   --fc-folder: #5ac8fa;
   --fc-folder-tab: #64d2ff;
@@ -131,6 +137,7 @@
   --fc-text-subtle: #999999;
   --fc-dot: #b0b0b0;
   --fc-preview: #eaeaea;
+  --fc-halftone-back: #fffaf0;
   --fc-wire: #999999;
   --fc-folder: #5ac8fa;
   --fc-folder-tab: #64d2ff;
@@ -192,6 +199,7 @@ body,
 .connection-panel,
 .breadcrumb,
 .file-node__card,
+.file-node__card-media,
 .file-node__toolbar,
 .file-node__label,
 .folder-node__label,
@@ -230,6 +238,7 @@ body,
   .connection-panel,
   .breadcrumb,
   .file-node__card,
+  .file-node__card-media,
   .file-node__toolbar,
   .file-node__label,
   .folder-node__label,
@@ -468,39 +477,36 @@ button {
   width: 168px;
   height: 210px;
   border-radius: var(--fc-radius);
-  background: var(--fc-preview);
+  background: transparent;
   overflow: visible;
   position: relative;
-  border: 1px solid var(--fc-border);
-  box-shadow: none;
-  transition: border-color var(--duration-hover) var(--ease-out);
+  /* Inset stroke sits on top of media so zoom sub-pixels never reveal a gap. */
+  border: none;
+  box-shadow: inset 0 0 0 1px var(--fc-border);
+  transition: box-shadow var(--duration-hover) var(--ease-out);
 }
 
 .file-node.is-hovered .file-node__card,
 .file-node:hover .file-node__card {
-  border-color: var(--fc-border-strong);
+  box-shadow: inset 0 0 0 1px var(--fc-border-strong);
 }
 
 .file-node__card-media {
   position: relative;
   width: 100%;
   height: 100%;
-  /* Inner radius aligns with the 1px card stroke so corners clip flush. */
-  border-radius: max(0px, calc(var(--fc-radius) - 1px));
+  border-radius: var(--fc-radius);
   overflow: hidden;
-  background: var(--fc-preview);
+  background: transparent;
   isolation: isolate;
 }
 
 .file-node__card img,
 .file-node__card canvas {
-  width: 100%;
-  height: 100%;
   object-fit: cover;
   object-position: center;
   display: block;
   pointer-events: none;
-  /* Radius + overflow on card-media; scaled media bleeds under the clip. */
   border-radius: 0;
 }
 
@@ -514,15 +520,15 @@ button {
 }
 
 .file-node__preview-img {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  /* Bleed past the clip so React Flow zoom never exposes card/halftone back. */
+  inset: -3px;
+  width: calc(100% + 6px);
+  height: calc(100% + 6px);
   max-width: none;
   object-fit: cover;
   object-position: center;
   display: block;
-  /* Slight overscale hides sub-pixel seams when the canvas zooms. */
-  transform: scale(1.02);
-  transform-origin: center;
   /* Prefer crisp downscale from full-res source; never invent blur. */
   image-rendering: auto;
   -webkit-user-drag: none;
@@ -531,14 +537,12 @@ button {
 
 .file-node__preview-halftone {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  inset: -3px;
+  width: calc(100% + 6px);
+  height: calc(100% + 6px);
   pointer-events: none;
   overflow: hidden;
   border-radius: inherit;
-  transform: scale(1.02);
-  transform-origin: center;
 }
 
 .file-node__preview-halftone > div {

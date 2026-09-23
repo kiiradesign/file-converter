@@ -1,6 +1,6 @@
 import { HalftoneCmyk } from '@paper-design/shaders-react'
 import { animate } from 'motion'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import {
   HALFTONE_CMYK,
   HALFTONE_MAX_PIXEL_COUNT,
@@ -172,6 +172,22 @@ function ConversionPreviewImage({
   )
 }
 
+function subscribeTheme(onStoreChange: () => void) {
+  const obs = new MutationObserver(onStoreChange)
+  obs.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-theme'],
+  })
+  return () => obs.disconnect()
+}
+
+function readHalftoneBack(): string {
+  const v = getComputedStyle(document.documentElement)
+    .getPropertyValue('--fc-halftone-back')
+    .trim()
+  return v || HALFTONE_CMYK.colorBack
+}
+
 function HalftoneWaveOverlay({
   src,
   width,
@@ -183,6 +199,11 @@ function HalftoneWaveOverlay({
   height: number
   waveT: number
 }) {
+  const colorBack = useSyncExternalStore(
+    subscribeTheme,
+    readHalftoneBack,
+    () => HALFTONE_CMYK.colorBack,
+  )
   const reveal = Math.min(1, Math.max(0, waveT))
   const softPct = WAVE_SOFTNESS * 100
   const frontPct = reveal * 100
@@ -204,6 +225,7 @@ function HalftoneWaveOverlay({
         speed={0}
         frame={0}
         {...HALFTONE_CMYK}
+        colorBack={colorBack}
       />
     </div>
   )
