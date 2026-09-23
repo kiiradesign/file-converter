@@ -3,11 +3,30 @@ import { animate } from 'motion'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   FLUTED_GLASS_MAX_PIXEL_COUNT,
+  PREVIEW_COLOR_BACK_DARK,
   REVEAL_CROSSFADE_S,
   WAVE_DURATION_S,
   WAVE_EASE,
   flutedGlassAtProgress,
 } from './conversionPreviewConfig'
+
+function usePreviewFillColor(): string {
+  const [color, setColor] = useState(PREVIEW_COLOR_BACK_DARK)
+  useEffect(() => {
+    const read = () => {
+      const v = getComputedStyle(document.documentElement)
+        .getPropertyValue('--fc-preview')
+        .trim()
+      setColor(v || PREVIEW_COLOR_BACK_DARK)
+    }
+    read()
+    const root = document.documentElement
+    const obs = new MutationObserver(read)
+    obs.observe(root, { attributes: true, attributeFilter: ['data-theme'] })
+    return () => obs.disconnect()
+  }, [])
+  return color
+}
 
 interface Props {
   src: string | null
@@ -112,6 +131,7 @@ function ConversionPreviewImage({
   const onWaveCompleteRef = useRef(onWaveComplete)
   onWaveCompleteRef.current = onWaveComplete
 
+  const previewFill = usePreviewFillColor()
   const reducedMotion = useMemo(
     () =>
       typeof window !== 'undefined' &&
@@ -206,7 +226,10 @@ function ConversionPreviewImage({
     (!showShader && !showResultImg) ||
     (shaderFailed && waveEligible && !showResultImg)
 
-  const glassParams = useMemo(() => flutedGlassAtProgress(waveT), [waveT])
+  const glassParams = useMemo(
+    () => ({ ...flutedGlassAtProgress(waveT), colorBack: previewFill }),
+    [waveT, previewFill],
+  )
   const boxW = Math.max(1, Math.round(width))
   const boxH = Math.max(1, Math.round(height))
 
@@ -219,7 +242,7 @@ function ConversionPreviewImage({
 
   return (
     <div
-      className={`file-node__preview${showShader ? ' file-node__preview--wave' : ''}`}
+      className="file-node__preview"
       style={{ width: '100%', height: '100%' }}
     >
       {showPreviewImg ? (

@@ -14,29 +14,31 @@ export const PREVIEW_COLOR_BACK_DARK = '#0a0a0a'
 export const FLUTED_GLASS_MAX_PIXEL_COUNT = 280_000
 
 /**
- * Paper Fluted Glass — default preset (matches shaders demo):
+ * Paper Fluted Glass — edge-safe load preset (from shaders demo defaults):
  * https://shaders.paper.design/fluted-glass
  */
 export const FLUTED_GLASS_START = {
-  colorBack: '#00000000',
+  colorBack: PREVIEW_COLOR_BACK_DARK,
   colorShadow: '#000000',
   colorHighlight: '#ffffff',
-  shadows: 0.25,
-  highlights: 0.1,
-  size: 0.5,
+  shadows: 0.14,
+  highlights: 0.03,
+  size: 0.46,
   shape: 'lines' as const,
   angle: 0,
   distortionShape: 'prism' as const,
-  distortion: 0.5,
+  distortion: 0.36,
   shift: 0,
   stretch: 0,
   blur: 0,
-  edges: 0.25,
-  margin: 0,
+  /** Edge rim distortion reads as halos against the card stroke — keep off during load. */
+  edges: 0,
+  margin: 0.04,
   grainMixer: 0,
   grainOverlay: 0,
   fit: 'cover' as const,
-  scale: 1,
+  /** Slight zoom so prism sampling stays inside image bounds (pairs with CSS scale). */
+  scale: 1.06,
 }
 
 /** Fully revealed — no glass distortion (shader ≈ source image). */
@@ -48,16 +50,25 @@ export const FLUTED_GLASS_CLEAR = {
   blur: 0,
   edges: 0,
   stretch: 0,
+  margin: 0,
   grainMixer: 0,
   grainOverlay: 0,
+  scale: 1,
 }
 
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t
 }
 
+/** Ease glass strength down before the crossfade so borders stay stable. */
+function effectStrength(t: number): number {
+  const u = Math.min(1, Math.max(0, t))
+  return 1 - (1 - u) ** 2
+}
+
 export function flutedGlassAtProgress(t: number) {
   const u = Math.min(1, Math.max(0, t))
+  const strength = effectStrength(u)
   const from = FLUTED_GLASS_START
   const to = FLUTED_GLASS_CLEAR
   return {
@@ -68,17 +79,17 @@ export function flutedGlassAtProgress(t: number) {
     angle: from.angle,
     distortionShape: from.distortionShape,
     fit: from.fit,
-    scale: from.scale,
-    size: lerp(from.size, to.size, u),
-    shadows: lerp(from.shadows, to.shadows, u),
-    highlights: lerp(from.highlights, to.highlights, u),
-    distortion: lerp(from.distortion, to.distortion, u),
-    shift: lerp(from.shift, to.shift, u),
-    stretch: lerp(from.stretch, to.stretch, u),
-    blur: lerp(from.blur, to.blur, u),
-    edges: lerp(from.edges, to.edges, u),
-    margin: from.margin,
-    grainMixer: lerp(from.grainMixer, to.grainMixer, u),
-    grainOverlay: lerp(from.grainOverlay, to.grainOverlay, u),
+    size: lerp(from.size, to.size, strength),
+    shadows: lerp(from.shadows, to.shadows, strength),
+    highlights: lerp(from.highlights, to.highlights, strength),
+    distortion: lerp(from.distortion, to.distortion, strength),
+    shift: lerp(from.shift, to.shift, strength),
+    stretch: lerp(from.stretch, to.stretch, strength),
+    blur: lerp(from.blur, to.blur, strength),
+    edges: lerp(from.edges, to.edges, strength),
+    margin: lerp(from.margin, to.margin, u),
+    scale: lerp(from.scale, to.scale, u),
+    grainMixer: lerp(from.grainMixer, to.grainMixer, strength),
+    grainOverlay: lerp(from.grainOverlay, to.grainOverlay, strength),
   }
 }
