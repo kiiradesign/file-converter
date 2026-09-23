@@ -4,8 +4,11 @@ export const WAVE_DURATION_S = 3.25
 /** Motion easing for reveal progress (smooth decel). */
 export const WAVE_EASE: [number, number, number, number] = [0.42, 0, 0.18, 1]
 
-/** Crossfade from shader preview to final output after reveal + blob ready. */
-export const REVEAL_CROSSFADE_S = 0.65
+/**
+ * Final handoff to output `<img>` only after shader params read clear and the job
+ * finishes late (wave already done). Keep short — param tween does the heavy lifting.
+ */
+export const REVEAL_CROSSFADE_S = 0.32
 
 /** Dark canvas match when CSS var is unavailable (SSR / first paint). */
 export const PREVIEW_COLOR_BACK_DARK = '#0a0a0a'
@@ -61,10 +64,16 @@ function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t
 }
 
-/** 1 at progress 0 (max glass), 0 at progress 1 (clear). */
-function glassAmountAtProgress(t: number): number {
+/** 1 at progress 0 (max glass), 0 at progress 1 (clear). Smooth resolve across the wave. */
+export function glassAmountAtProgress(t: number): number {
   const u = Math.min(1, Math.max(0, t))
-  return 1 - (1 - u) ** 2
+  const eased = u * u * (3 - 2 * u)
+  return 1 - eased
+}
+
+/** 0 → 1 as glass clears; use for output layer when encode finishes during the wave. */
+export function resultBlendAtProgress(t: number): number {
+  return 1 - glassAmountAtProgress(t)
 }
 
 export function flutedGlassAtProgress(t: number) {

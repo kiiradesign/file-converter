@@ -8,6 +8,8 @@ import {
   WAVE_DURATION_S,
   WAVE_EASE,
   flutedGlassAtProgress,
+  glassAmountAtProgress,
+  resultBlendAtProgress,
 } from './conversionPreviewConfig'
 
 function usePreviewFillColor(): string {
@@ -129,15 +131,17 @@ function ConversionPreviewImage({
 }) {
   const [waveT, setWaveT] = useState(() => (waveEligible ? 0 : 1))
   const [waveFinished, setWaveFinished] = useState(() => !waveEligible)
-  const [shaderOpacity, setShaderOpacity] = useState(() => (waveEligible ? 1 : 0))
-  const [resultOpacity, setResultOpacity] = useState(0)
+  const [lateRevealOpacity, setLateRevealOpacity] = useState(0)
   const [shaderFailed, setShaderFailed] = useState(false)
   const [shaderPaintReady, setShaderPaintReady] = useState(false)
   const shaderWrapRef = useRef<HTMLDivElement>(null)
   const waveSessionRef = useRef(0)
   const crossfadeSessionRef = useRef(0)
+  const encodeFinishedAfterWaveRef = useRef(false)
   const onWaveCompleteRef = useRef(onWaveComplete)
   onWaveCompleteRef.current = onWaveComplete
+  const jobReadyRef = useRef(false)
+  jobReadyRef.current = jobDone && !!outputSrc
 
   const previewFill = usePreviewFillColor()
   const reducedMotion = useMemo(
@@ -158,10 +162,10 @@ function ConversionPreviewImage({
     const session = waveSessionRef.current
     setWaveT(0)
     setWaveFinished(false)
-    setShaderOpacity(1)
-    setResultOpacity(0)
+    setLateRevealOpacity(0)
     setShaderFailed(false)
     setShaderPaintReady(false)
+    encodeFinishedAfterWaveRef.current = false
 
     if (reducedMotion) {
       const t = window.setTimeout(() => {
@@ -184,6 +188,11 @@ function ConversionPreviewImage({
         if (session !== waveSessionRef.current) return
         setWaveT(1)
         setWaveFinished(true)
+        if (!jobReadyRef.current) {
+          encodeFinishedAfterWaveRef.current = true
+        } else {
+          setLateRevealOpacity(1)
+        }
         onWaveCompleteRef.current?.()
       },
     })
@@ -214,23 +223,31 @@ function ConversionPreviewImage({
     }
   }, [waveEligible, shaderFailed, sourcePreview, conversionWaveReplayKey])
 
-  const readyToReveal = waveFinished && jobDone && !!outputSrc
+  const jobReady = jobDone && !!outputSrc
+  const waveActive = waveEligible && !waveFinished
+  const unifiedReveal = jobReady && waveEligible && waveActive
+  const lateRevealPending = jobReady && waveFinished && lateRevealOpacity < 0.999
 
   useEffect(() => {
-    if (!readyToReveal) {
-      if (!waveEligible && waveFinished) {
-        setShaderOpacity(0)
-        setResultOpacity(1)
-      }
+    if (!waveEligible && waveFinished && jobReady) {
+      setLateRevealOpacity(1)
       return
     }
+    if (!jobReady || !waveFinished) {
+      if (!jobReady) setLateRevealOpacity(0)
+      return
+    }
+    if (!encodeFinishedAfterWaveRef.current) {
+      setLateRevealOpacity(1)
+      return
+    }
+    encodeFinishedAfterWaveRef.current = false
 
     crossfadeSessionRef.current += 1
     const session = crossfadeSessionRef.current
 
     if (reducedMotion) {
-      setShaderOpacity(0)
-      setResultOpacity(1)
+      setLateRevealOpacity(1)
       return
     }
 
@@ -239,25 +256,34 @@ function ConversionPreviewImage({
       ease: [0.4, 0, 0.2, 1],
       onUpdate: (v) => {
         if (session !== crossfadeSessionRef.current) return
-        setResultOpacity(v)
-        setShaderOpacity(1 - v)
+        setLateRevealOpacity(v)
       },
       onComplete: () => {
         if (session !== crossfadeSessionRef.current) return
-        setResultOpacity(1)
-        setShaderOpacity(0)
+        setLateRevealOpacity(1)
       },
     })
     return () => ctrl.stop()
-  }, [readyToReveal, reducedMotion, waveEligible, waveFinished])
+  }, [jobReady, reducedMotion, waveEligible, waveFinished])
 
-  const waveActive = waveEligible && !waveFinished
+  const glassAmount = glassAmountAtProgress(waveT)
+  const unifiedResultOpacity = unifiedReveal ? resultBlendAtProgress(waveT) : 0
+  const unifiedShaderOpacity = unifiedReveal ? glassAmount : waveEligible || waveFinished ? 1 : 0
+
+  const resultOpacity = unifiedReveal ? unifiedResultOpacity : lateRevealOpacity
+  const shaderOpacity = unifiedReveal
+    ? unifiedShaderOpacity
+    : lateRevealPending
+      ? 1 - lateRevealOpacity
+      : waveEligible || (waveFinished && !jobReady)
+        ? 1
+        : 0
+
   const showShaderLayer =
     !shaderFailed && shaderOpacity > 0.001 && (waveEligible || waveFinished)
   const shaderRevealReady = !waveActive || shaderPaintReady
-  const showResultImg =
-    !!outputSrc && !waveActive && (readyToReveal || resultOpacity > 0)
-  const resultVisible = readyToReveal && resultOpacity >= 0.999
+  const showResultImg = !!outputSrc && resultOpacity > 0.001
+  const resultVisible = resultOpacity >= 0.999
   const showPreviewImg =
     !waveEligible &&
     ((!showShaderLayer && !showResultImg) ||
