@@ -1,6 +1,6 @@
 import { HalftoneCmyk } from '@paper-design/shaders-react'
 import { animate } from 'motion'
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import {
   HALFTONE_CMYK,
   HALFTONE_MAX_PIXEL_COUNT,
@@ -62,8 +62,11 @@ export function PixelationPreview({
   }
 
   const jobDone = jobStatus === 'done' && !!outputSrc
+  /** Play wave for the full 1s once a result conversion starts (flag or running job). */
   const waveEligible =
-    !!isResult && jobStatus !== 'error' && !!conversionWavePending
+    !!isResult &&
+    jobStatus !== 'error' &&
+    (!!conversionWavePending || jobStatus === 'running')
 
   return (
     <ConversionPreviewImage
@@ -103,6 +106,8 @@ function ConversionPreviewImage({
 }) {
   const [waveT, setWaveT] = useState(0)
   const [waveFinished, setWaveFinished] = useState(!waveEligible)
+  const onWaveCompleteRef = useRef(onWaveComplete)
+  onWaveCompleteRef.current = onWaveComplete
   const reducedMotion = useMemo(
     () =>
       typeof window !== 'undefined' &&
@@ -123,7 +128,7 @@ function ConversionPreviewImage({
     if (reducedMotion) {
       setWaveT(1)
       setWaveFinished(true)
-      onWaveComplete?.()
+      onWaveCompleteRef.current?.()
       return
     }
 
@@ -134,11 +139,11 @@ function ConversionPreviewImage({
       onComplete: () => {
         setWaveT(1)
         setWaveFinished(true)
-        onWaveComplete?.()
+        onWaveCompleteRef.current?.()
       },
     })
     return () => ctrl.stop()
-  }, [waveEligible, reducedMotion, onWaveComplete])
+  }, [waveEligible, reducedMotion])
 
   const showResult = waveFinished && jobDone && !!outputSrc
   const displaySrc = showResult ? outputSrc! : previewSrc || fallbackSrc
@@ -207,7 +212,8 @@ function HalftoneWaveOverlay({
   const reveal = Math.min(1, Math.max(0, waveT))
   const softPct = WAVE_SOFTNESS * 100
   const frontPct = reveal * 100
-  const maskImage = `linear-gradient(to bottom, transparent 0%, transparent ${Math.max(0, frontPct - softPct)}%, black ${Math.min(100, frontPct + softPct)}%, black 100%)`
+  // Halftone visible from top → frontPct (soft band); sharp source shows below the wave front.
+  const maskImage = `linear-gradient(to bottom, black 0%, black ${Math.max(0, frontPct - softPct)}%, transparent ${Math.min(100, frontPct + softPct)}%, transparent 100%)`
 
   return (
     <div

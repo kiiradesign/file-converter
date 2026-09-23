@@ -521,6 +521,7 @@ button {
 
 .file-node__preview-img {
   position: absolute;
+  z-index: 0;
   /* Bleed past the clip so React Flow zoom never exposes card/halftone back. */
   inset: -3px;
   width: calc(100% + 6px);
@@ -538,16 +539,30 @@ button {
 .file-node__preview-halftone {
   position: absolute;
   inset: -3px;
+  z-index: 1;
   width: calc(100% + 6px);
   height: calc(100% + 6px);
   pointer-events: none;
   overflow: hidden;
   border-radius: inherit;
+  transform: scale(1.02);
+  transform-origin: center;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
 }
 
 .file-node__preview-halftone > div {
   width: 100% !important;
   height: 100% !important;
+}
+
+.file-node__preview-halftone canvas {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: unset;
+  display: block;
 }
 
 .file-node__placeholder {
