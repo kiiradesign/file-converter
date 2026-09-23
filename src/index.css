@@ -483,19 +483,21 @@ button {
   position: relative;
   border: none;
   box-shadow: none;
+  box-sizing: border-box;
+  outline: none;
 }
 
 .file-node__card-media {
   position: relative;
-  /* Bleed under the inset stroke so zoom sub-pixels never show a light gap. */
-  width: calc(100% + 2px);
-  height: calc(100% + 2px);
-  margin: -1px;
+  width: 100%;
+  height: 100%;
   border-radius: var(--fc-radius);
   overflow: hidden;
   background: var(--fc-preview);
   isolation: isolate;
   transform: translateZ(0);
+  box-sizing: border-box;
+  outline: none;
 }
 
 .file-node__card-media::after {
@@ -531,63 +533,78 @@ button {
   border-radius: inherit;
   line-height: 0;
   background: var(--fc-preview);
+  box-sizing: border-box;
+  outline: none;
 }
 
+/* Slight zoom so edges bleed under clip + inset stroke at high canvas zoom. */
 .file-node__preview-img {
   position: absolute;
   z-index: 0;
-  /* Bleed past the clip so React Flow zoom never exposes a light gap under the inset stroke. */
-  inset: -5px;
-  width: calc(100% + 10px);
-  height: calc(100% + 10px);
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 100%;
+  min-height: 100%;
   max-width: none;
   object-fit: cover;
   object-position: center;
   display: block;
   background: var(--fc-preview);
-  /* Prefer crisp downscale from full-res source; never invent blur. */
+  box-sizing: border-box;
+  outline: none;
   image-rendering: auto;
   -webkit-user-drag: none;
   user-select: none;
-  will-change: transform;
   backface-visibility: hidden;
-  transform: translateZ(0);
+  transform: translateZ(0) scale(1.05);
+  transform-origin: center center;
 }
 
 .file-node__preview-halftone {
   position: absolute;
-  inset: -5px;
+  inset: 0;
   z-index: 1;
-  width: calc(100% + 10px);
-  height: calc(100% + 10px);
+  width: 100%;
+  height: 100%;
   pointer-events: none;
   overflow: hidden;
   border-radius: inherit;
-  background: var(--fc-halftone-back);
+  background: transparent;
+  box-sizing: border-box;
+  outline: none;
   -webkit-mask-size: 100% 100%;
   mask-size: 100% 100%;
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
   will-change: mask-image, -webkit-mask-image;
   backface-visibility: hidden;
-  transform: translateZ(0);
+  transform: translateZ(0) scale(1.05);
+  transform-origin: center center;
 }
 
 .file-node__preview-wave-fallback {
   position: absolute;
   inset: 0;
+  z-index: 2;
   width: 100%;
   height: 100%;
+  min-width: 100%;
+  min-height: 100%;
   display: block;
   pointer-events: none;
+  box-sizing: border-box;
 }
 
 .file-node__preview-halftone-shader,
 .file-node__preview-halftone-shader > div {
   position: absolute;
   inset: 0;
+  z-index: 1;
   width: 100% !important;
   height: 100% !important;
+  opacity: 0.88;
+  pointer-events: none;
 }
 
 .file-node__preview-halftone canvas,

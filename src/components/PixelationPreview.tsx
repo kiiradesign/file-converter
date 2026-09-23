@@ -173,15 +173,16 @@ function ConversionPreviewImage({
   }, [waveEligible, reducedMotion])
 
   const showResult = waveFinished && jobDone && !!outputSrc
-  const displaySrc = showResult ? outputSrc! : previewSrc || fallbackSrc
+  const underlaySrc = previewSrc || fallbackSrc
+  const displaySrc = showResult ? outputSrc! : underlaySrc
   const showWave = waveEligible && !waveFinished
   const useShader = canUseWebGL()
 
   return (
     <div className="file-node__preview" style={{ width: '100%', height: '100%' }}>
       <img
-        key={displaySrc}
-        src={displaySrc}
+        key={showWave ? underlaySrc : displaySrc}
+        src={showWave ? underlaySrc : displaySrc}
         alt=""
         draggable={false}
         decoding="async"
@@ -195,7 +196,7 @@ function ConversionPreviewImage({
       />
       {showWave && (
         <HalftoneWaveOverlay
-          src={previewSrc || fallbackSrc}
+          src={underlaySrc}
           width={width}
           height={height}
           waveT={waveT}
@@ -252,20 +253,41 @@ function HalftoneWaveOverlay({
     () => HALFTONE_COLOR_BACK_DARK,
   )
   const [shaderFailed, setShaderFailed] = useState(false)
-  const showShader = useShader && !shaderFailed
+  const [sourceReady, setSourceReady] = useState(false)
   const boxW = Math.max(1, Math.round(width))
   const boxH = Math.max(1, Math.round(height))
 
+  useEffect(() => {
+    if (!src) {
+      setSourceReady(false)
+      return
+    }
+    let cancelled = false
+    setSourceReady(false)
+    const img = new Image()
+    img.onload = () => {
+      if (!cancelled) setSourceReady(true)
+    }
+    img.onerror = () => {
+      if (!cancelled) {
+        setSourceReady(false)
+        setShaderFailed(true)
+      }
+    }
+    img.src = src
+    return () => {
+      cancelled = true
+      img.onload = null
+      img.onerror = null
+    }
+  }, [src])
+
+  const showShader = useShader && !shaderFailed && sourceReady
+
   return (
     <div className="file-node__preview-halftone" style={waveMaskStyle(waveT)}>
-      <PixelGridWaveFallback
-        src={src}
-        width={boxW}
-        height={boxH}
-        colorBack={colorBack}
-      />
       {showShader ? (
-        <div className="file-node__preview-halftone-shader">
+        <div className="file-node__preview-halftone-shader" aria-hidden>
           <HalftoneCmyk
             image={src}
             width={boxW}
@@ -279,6 +301,12 @@ function HalftoneWaveOverlay({
           />
         </div>
       ) : null}
+      <PixelGridWaveFallback
+        src={src}
+        width={boxW}
+        height={boxH}
+        colorBack={colorBack}
+      />
     </div>
   )
 }
@@ -305,7 +333,9 @@ function PixelGridWaveFallback({
 
     let cancelled = false
     const img = new Image()
-    img.crossOrigin = 'anonymous'
+    if (!src.startsWith('blob:') && !src.startsWith('data:')) {
+      img.crossOrigin = 'anonymous'
+    }
     img.onload = () => {
       if (cancelled) return
       const cell = Math.max(4, Math.round(Math.min(width, height) / 28))
