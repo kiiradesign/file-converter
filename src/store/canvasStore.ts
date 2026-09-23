@@ -35,6 +35,12 @@ import type {
   FileEntry,
   FolderEntry,
 } from '../types'
+import {
+  buildCanvasObstacleRects,
+  rectAt,
+  resolveParentImportPosition,
+  estimateImportNodeSize,
+} from '../lib/importNodePlacement'
 import { computeDefaultResultPosition } from '../lib/resultNodePlacement'
 import { DEFAULT_SETTINGS } from '../types'
 
@@ -212,16 +218,26 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const files = { ...get().files }
     const nodes = [...get().nodes]
     const folders = { ...get().folders }
+    const obstacles = buildCanvasObstacleRects(nodes, files, canvasId)
+    const batchPlaced: ReturnType<typeof rectAt>[] = []
 
-    let i = 0
     for (const file of fileList) {
       const entry = await createFileEntry(file)
       files[entry.id] = entry
+      const nodePosition = resolveParentImportPosition(
+        position,
+        'file',
+        entry,
+        obstacles,
+        batchPlaced,
+      )
+      const size = estimateImportNodeSize('file', entry)
+      batchPlaced.push(rectAt(nodePosition, size))
       const id = uid('node')
       nodes.push({
         id,
         type: 'file',
-        position: { x: position.x + i * 40, y: position.y + i * 40 },
+        position: nodePosition,
         data: {
           kind: 'file',
           fileId: entry.id,
@@ -237,7 +253,6 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
           childFileIds: [...folders[canvasId].childFileIds, entry.id],
         }
       }
-      i++
     }
     set({ files, nodes, folders })
   },
@@ -253,11 +268,20 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     folders[graph.folder.id] = graph.folder
     for (const nf of graph.nestedFolders) folders[nf.id] = nf
 
+    const obstacles = buildCanvasObstacleRects(nodes, files, canvasId)
+    const folderPosition = resolveParentImportPosition(
+      position,
+      'folder',
+      undefined,
+      obstacles,
+      [],
+    )
+
     // Always place the folder node on the current canvas — even if empty.
     nodes.push({
       id: uid('node'),
       type: 'folder',
-      position,
+      position: folderPosition,
       data: {
         kind: 'folder',
         folderId: graph.folder.id,
@@ -323,14 +347,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   handleDrop: async (dt, position) => {
     const { files, folders } = await readDroppedItems(dt)
-    if (folders.length) {
-      for (let i = 0; i < folders.length; i++) {
-        const f = folders[i]
-        await get().addFolderAt(f.folderName, f.files, {
-          x: position.x + i * 80,
-          y: position.y + i * 40,
-        })
-      }
+    for (const f of folders) {
+      await get().addFolderAt(f.folderName, f.files, position)
     }
     if (files.length) {
       await get().addFilesAt(files, position)

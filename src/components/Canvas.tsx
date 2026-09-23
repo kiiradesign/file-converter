@@ -15,13 +15,8 @@ import { FileNode } from './nodes/FileNode'
 import { FolderNode } from './nodes/FolderNode'
 import { ConnectionPanel } from './ConnectionPanel'
 import { AddChooser } from './AddChooser'
-import { previewCardSize } from '../lib/previewCardSize'
+import { centeredImportPosition } from '../lib/importNodePlacement'
 import { useCanvasStore } from '../store/canvasStore'
-
-/** Default file card size — used to center empty-state imports on the viewport. */
-const DEFAULT_FILE_CARD = previewCardSize()
-/** Folder glyph + label (flow px), for centering empty-state folder picks. */
-const FOLDER_NODE_CENTER_OFFSET = { w: 96, h: 120 }
 
 const nodeTypes = {
   file: FileNode,
@@ -194,17 +189,7 @@ function CanvasInner() {
 
   const spawnFlowForEmptyStateImport = useCallback(
     (kind: 'file' | 'folder'): XYPosition => {
-      const center = viewportCenterFlow()
-      if (kind === 'file') {
-        return {
-          x: center.x - DEFAULT_FILE_CARD.width / 2,
-          y: center.y - DEFAULT_FILE_CARD.height / 2,
-        }
-      }
-      return {
-        x: center.x - FOLDER_NODE_CENTER_OFFSET.w / 2,
-        y: center.y - FOLDER_NODE_CENTER_OFFSET.h / 2,
-      }
+      return centeredImportPosition(viewportCenterFlow(), kind)
     },
     [viewportCenterFlow],
   )

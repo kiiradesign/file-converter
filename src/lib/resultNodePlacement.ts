@@ -1,5 +1,10 @@
 import type { XYPosition } from '@xyflow/react'
 import type { FileEntry } from '../types'
+import {
+  estimateImportNodeSize,
+  FILE_LABEL_BLOCK,
+  FILE_TOOLBAR_SPACE,
+} from './importNodePlacement'
 import { previewCardSize } from './previewCardSize'
 
 type PlacementNode = {
@@ -16,11 +21,6 @@ export const RESULT_OFFSET_X = 400
 export const RESULT_OFFSET_Y = 56
 /** Gap between stacked sibling results (flow px). */
 export const RESULT_STACK_GAP = 32
-
-const FILE_TOOLBAR_SPACE = 52
-const FILE_LABEL_BLOCK = 28
-const FOLDER_ICON_H = Math.round((96 * 854) / 1004)
-const FOLDER_LABEL_BLOCK = 28
 
 function childResultNodes(
   sourceNodeId: string,
@@ -45,7 +45,7 @@ function estimateFileNodeHeight(
 }
 
 function estimateFolderNodeHeight(): number {
-  return FOLDER_ICON_H + FOLDER_LABEL_BLOCK
+  return estimateImportNodeSize('folder').height
 }
 
 function estimateNodeBottom(
