@@ -20,7 +20,7 @@ Most converters are upload → wait → download, with no sense of history. Here
 - **Add files or an entire folder** — double-click → Files / Folder chooser; Shift-double-click → folder picker; drag-and-drop folders
 - **In-browser encode:** PNG, JPG, WEBP, AVIF, GIF, BMP, PDF
 - Convert list shows **other formats only** (same-format re-encode stays on **Compress**)
-- **Quality** and **Resolution** sliders; convert panel titled **Convert to JPG** (etc.)
+- **Quality** and **Resolution** sliders
 - **Compress** creates a new chained same-format result (never mutates the source)
 - **Save** downloads a file; folder Save zips contents
 - Folder drill-in with breadcrumb back navigation
