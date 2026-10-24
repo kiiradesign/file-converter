@@ -91,7 +91,6 @@ export function ConnectionPanel() {
   const files = useCanvasStore((s) => s.files)
   const updateDraftSettings = useCanvasStore((s) => s.updateDraftSettings)
   const confirmDraft = useCanvasStore((s) => s.confirmDraft)
-  const cancelDraft = useCanvasStore((s) => s.cancelDraft)
   const panelRef = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState({ left: 24, top: 96 })
 
@@ -197,11 +196,6 @@ export function ConnectionPanel() {
           {targets.length === 0 && (
             <p className="connection-panel__hint">No compatible formats for this file.</p>
           )}
-          <div className="actions">
-            <button type="button" onClick={cancelDraft}>
-              Cancel
-            </button>
-          </div>
         </>
       ) : (
         <>
@@ -232,9 +226,6 @@ export function ConnectionPanel() {
           </div>
 
           <div className="actions">
-            <button type="button" onClick={cancelDraft}>
-              Cancel
-            </button>
             <button
               type="button"
               className="primary"
