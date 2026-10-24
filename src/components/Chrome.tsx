@@ -1,10 +1,9 @@
-import { Sun, Moon, RefreshCw } from 'lucide-react'
+import { Sun, Moon } from 'lucide-react'
 import { useCanvasStore } from '../store/canvasStore'
 
 export function Chrome() {
   const theme = useCanvasStore((s) => s.theme)
   const toggleTheme = useCanvasStore((s) => s.toggleTheme)
-  const replayConversionPreviews = useCanvasStore((s) => s.replayConversionPreviews)
 
   return (
     <>
@@ -12,17 +11,6 @@ export function Chrome() {
         <h1>File Converter</h1>
         <p>Convert files on an infinite canvas.</p>
       </div>
-
-      {/* TEMP debug: re-watch conversion preview animations without re-encoding. */}
-      <button
-        type="button"
-        className="chrome-replay"
-        aria-label="Replay conversion animations"
-        title="Replay animations"
-        onClick={replayConversionPreviews}
-      >
-        <RefreshCw size={18} strokeWidth={1.75} aria-hidden />
-      </button>
 
       <button
         type="button"
