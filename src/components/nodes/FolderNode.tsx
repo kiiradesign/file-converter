@@ -19,6 +19,10 @@ function FolderNodeComponent({ id, data }: NodeProps & { data: FolderNodeData })
   /** Vertical mid of the icon — where edges should meet. */
   const iconMidY = ICON_H / 2
 
+  const stopDrag = (e: React.SyntheticEvent) => {
+    e.stopPropagation()
+  }
+
   return (
     <div
       className={`folder-node${showHoverChrome ? ' is-hovered' : ''}`}
@@ -35,7 +39,7 @@ function FolderNodeComponent({ id, data }: NodeProps & { data: FolderNodeData })
       onClick={(e) => {
         if (draftOpen) return
         if ((e.target as HTMLElement).closest('.folder-node__plus')) return
-        if ((e.target as HTMLElement).closest('.folder-node__toolbar')) return
+        if ((e.target as HTMLElement).closest('.folder-node__toolbar-bridge')) return
         enterFolder(data.folderId)
       }}
     >
@@ -66,6 +70,33 @@ function FolderNodeComponent({ id, data }: NodeProps & { data: FolderNodeData })
           style={{ top: iconMidY, right: 0, left: 'auto' }}
         />
 
+        {data.isResult && !draftOpen && (
+          <div
+            className={`folder-node__toolbar-bridge nodrag nopan${showHoverChrome ? ' is-visible' : ''}`}
+            style={{
+              transform: `translate(-50%, calc(-100% - 8px)) scale(${counter})`,
+            }}
+            onMouseEnter={() => setHovered(true)}
+            onPointerDown={stopDrag}
+          >
+            <div className="folder-node__toolbar">
+              <button
+                type="button"
+                className="nodrag nopan"
+                onPointerDown={stopDrag}
+                onMouseDown={stopDrag}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  e.preventDefault()
+                  void saveNode(id)
+                }}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        )}
+
         {!draftOpen && (
           <button
             type="button"
@@ -93,25 +124,6 @@ function FolderNodeComponent({ id, data }: NodeProps & { data: FolderNodeData })
         {data.label}
       </div>
 
-      {data.isResult && !draftOpen && (
-        <div
-          className={`folder-node__toolbar${showHoverChrome ? ' is-visible' : ''}`}
-          style={{
-            transform: `translate(-50%, calc(-100% - 8px)) scale(${counter})`,
-          }}
-          onMouseEnter={() => setHovered(true)}
-        >
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              void saveNode(id)
-            }}
-          >
-            Save
-          </button>
-        </div>
-      )}
     </div>
   )
 }
