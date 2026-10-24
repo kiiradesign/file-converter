@@ -1,11 +1,5 @@
 # File Converter
 
-**Final web app (v0.1)** — convert images on an infinite canvas in the browser. Everything runs locally in your tab; nothing is uploaded to a server.
-
-A **native macOS desktop app** is planned later via [Tauri](https://tauri.app/). That wrapper is **not shipped yet**; this repository is the production web build. See [docs/tauri-readiness.md](docs/tauri-readiness.md) for how the codebase stays ready for a future shell.
-
----
-
 ## What it does
 
 File Converter is a local-first tool for turning PNGs, JPGs, WEBPs, HEIC, SVG, and more into other formats without leaving your machine. Drop files or whole folders onto a dotted canvas, connect conversions with **`+`**, tune quality and resolution, then save results. Each convert or compress step becomes a **new node** on the canvas — the graph is your version history.
@@ -81,6 +75,12 @@ There is **no backend**. The app is static assets after `npm run build`; deploy 
 - **Conversion:** `src/convert/web/*` encoders; job queue with bounded concurrency
 
 Platform routing (`src/platform.ts`, `src/io/*`, `src/convert/desktop/*`) keeps web and future desktop paths separate — details in [docs/tauri-readiness.md](docs/tauri-readiness.md).
+
+---
+
+**Final web app (v0.1)** — convert images on an infinite canvas in the browser. Everything runs locally in your tab; nothing is uploaded to a server.
+
+A **native macOS desktop app** is planned later via [Tauri](https://tauri.app/). That wrapper is **not shipped yet**; this repository is the production web build. See [docs/tauri-readiness.md](docs/tauri-readiness.md) for how the codebase stays ready for a future shell.
 
 ---
 
