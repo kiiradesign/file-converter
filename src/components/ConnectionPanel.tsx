@@ -180,9 +180,8 @@ export function ConnectionPanel() {
               <li key={t}>
                 <button
                   type="button"
-                  className={draft.settings.format === t ? 'is-active' : undefined}
                   role="option"
-                  aria-selected={draft.settings.format === t}
+                  aria-selected={false}
                   onClick={() => {
                     updateDraftSettings({ format: t as ConvertFormat })
                     setView('sliders')

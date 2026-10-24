@@ -1117,14 +1117,19 @@ button {
     transform var(--duration-fast) var(--ease-out);
 }
 
-.format-list button:active {
-  transform: scale(0.97);
+.format-list button:focus {
+  outline: none;
 }
 
-.format-list button.is-active {
+.format-list button:focus-visible {
+  outline: 2px solid var(--dial-border);
+  outline-offset: 2px;
+}
+
+.format-list button:active {
+  transform: scale(0.97);
   background: var(--dial-surface-hover);
   color: var(--dial-text-root);
-  border-color: var(--dial-border);
 }
 
 @media (hover: hover) and (pointer: fine) {
