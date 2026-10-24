@@ -1,7 +1,5 @@
 # File Converter
 
-## What it does
-
 File Converter is a local-first tool for turning PNGs, JPGs, WEBPs, HEIC, SVG, and more into other formats without leaving your machine. Drop files or whole folders onto a dotted canvas, connect conversions with **`+`**, tune quality and resolution, then save results. Each convert or compress step becomes a **new node** on the canvas — the graph is your version history.
 
 ### Key UX
