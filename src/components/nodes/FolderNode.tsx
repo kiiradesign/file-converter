@@ -1,7 +1,10 @@
 import { Handle, Position, useViewport, type NodeProps } from '@xyflow/react'
 import { Plus } from 'lucide-react'
-import { memo, useState } from 'react'
+import { memo, useCallback, useState } from 'react'
 import { useCanvasStore, type FolderNodeData } from '../../store/canvasStore'
+
+const base = import.meta.env.BASE_URL || '/'
+const FOLDER_ICON_SRC = `${base.endsWith('/') ? base : `${base}/`}folder-icon.png`
 
 /** Display size for the macOS folder PNG (source 1004×854). */
 const ICON_W = 96
@@ -14,7 +17,12 @@ function FolderNodeComponent({ id, data }: NodeProps & { data: FolderNodeData })
   const saveNode = useCanvasStore((s) => s.saveNode)
   const draftOpen = useCanvasStore((s) => s.draft != null)
   const [hovered, setHovered] = useState(false)
+  const [iconBroken, setIconBroken] = useState(false)
   const counter = 1 / Math.max(zoom, 0.01)
+
+  const onIconError = useCallback(() => {
+    setIconBroken(true)
+  }, [])
   const showHoverChrome = hovered && !draftOpen
   /** Vertical mid of the icon — where edges should meet. */
   const iconMidY = ICON_H / 2
@@ -43,16 +51,29 @@ function FolderNodeComponent({ id, data }: NodeProps & { data: FolderNodeData })
         enterFolder(data.folderId)
       }}
     >
-      <div className="folder-node__glyph-wrap" style={{ width: ICON_W, height: ICON_H }}>
-        <img
-          className="folder-node__glyph"
-          src="/folder-icon.png"
-          alt=""
-          width={ICON_W}
-          height={ICON_H}
-          draggable={false}
-          decoding="async"
-        />
+      <div
+        className="folder-node__glyph-wrap"
+        style={{ width: ICON_W, height: ICON_H, minHeight: ICON_H }}
+      >
+        {iconBroken ? (
+          <div
+            className="folder-node__glyph folder-node__glyph--fallback"
+            aria-hidden
+          />
+        ) : (
+          <img
+            className="folder-node__glyph"
+            src={FOLDER_ICON_SRC}
+            alt=""
+            width={ICON_W}
+            height={ICON_H}
+            draggable={false}
+            decoding="async"
+            loading="eager"
+            fetchPriority="high"
+            onError={onIconError}
+          />
+        )}
 
         {/* Handles sit on the icon’s left/right edges at vertical mid — not the label box. */}
         <Handle

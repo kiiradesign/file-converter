@@ -46,12 +46,12 @@ export async function createFileEntry(file: File, id = uid('file')): Promise<Fil
 
   if (isHeicSource(extension, file.type)) {
     // Browsers cannot paint HEIC in <img> — decode a JPEG preview once at ingest.
+    entry.mimeType = entry.mimeType || 'image/heic'
     try {
       const preview = await heicToPreview(file)
       entry.previewUrl = preview.previewUrl
       entry.width = preview.width
       entry.height = preview.height
-      entry.mimeType = entry.mimeType || 'image/heic'
     } catch (err) {
       console.error('HEIC preview decode failed', err)
     }

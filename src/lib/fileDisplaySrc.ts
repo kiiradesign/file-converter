@@ -23,11 +23,12 @@ export function fileThumbnailSrc(
 ): string | null {
   if (!file) return null
 
+  if (file.previewUrl) return file.previewUrl
+
   if (opts.isResult) {
-    return file.previewUrl ?? null
+    return null
   }
 
-  if (file.previewUrl) return file.previewUrl
   if (isHeicLikeFile(file)) return null
   return file.objectUrl || null
 }

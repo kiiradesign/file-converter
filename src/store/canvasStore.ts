@@ -41,6 +41,11 @@ import {
   resolveParentImportPosition,
   estimateImportNodeSize,
 } from '../lib/importNodePlacement'
+import { isHeicLikeFile } from '../lib/fileDisplaySrc'
+import {
+  resolveFolderChildPositions,
+  type FolderChildSpec,
+} from '../lib/folderChildNodePlacement'
 import { computeDefaultResultPosition } from '../lib/resultNodePlacement'
 import { DEFAULT_SETTINGS } from '../types'
 
@@ -298,42 +303,58 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     // so drill-in works for nested directories too.
     const allFolders = [graph.folder, ...graph.nestedFolders]
     for (const folder of allFolders) {
-      let i = 0
+      const specs: FolderChildSpec[] = []
+      const childMeta: (
+        | { kind: 'file'; entry: FileEntry }
+        | { kind: 'folder'; child: FolderEntry }
+      )[] = []
+
       for (const fileId of folder.childFileIds) {
         const entry = files[fileId]
         if (!entry) continue
-        nodes.push({
-          id: uid('node'),
-          type: 'file',
-          position: { x: 80 + (i % 4) * 220, y: 80 + Math.floor(i / 4) * 280 },
-          data: {
-            kind: 'file',
-            fileId: entry.id,
-            label: fileLabel(entry.name, false),
-            isResult: false,
-            canvasId: folder.id,
-            jobStatus: 'idle',
-          },
-        })
-        i++
+        specs.push({ kind: 'file', file: entry })
+        childMeta.push({ kind: 'file', entry })
       }
       for (const childId of folder.childFolderIds) {
         const child = folders[childId]
         if (!child) continue
-        nodes.push({
-          id: uid('node'),
-          type: 'folder',
-          position: { x: 80 + (i % 4) * 160, y: 80 + Math.floor(i / 4) * 180 },
-          data: {
-            kind: 'folder',
-            folderId: child.id,
-            label: child.name,
-            isResult: false,
-            canvasId: folder.id,
-            jobStatus: 'idle',
-          },
-        })
-        i++
+        specs.push({ kind: 'folder' })
+        childMeta.push({ kind: 'folder', child })
+      }
+
+      const positions = resolveFolderChildPositions(folder.id, nodes, files, specs)
+      for (let i = 0; i < childMeta.length; i++) {
+        const meta = childMeta[i]
+        const position = positions[i] ?? { x: 80, y: 80 }
+        if (meta.kind === 'file') {
+          nodes.push({
+            id: uid('node'),
+            type: 'file',
+            position,
+            data: {
+              kind: 'file',
+              fileId: meta.entry.id,
+              label: fileLabel(meta.entry.name, false),
+              isResult: false,
+              canvasId: folder.id,
+              jobStatus: 'idle',
+            },
+          })
+        } else {
+          nodes.push({
+            id: uid('node'),
+            type: 'folder',
+            position,
+            data: {
+              kind: 'folder',
+              folderId: meta.child.id,
+              label: meta.child.name,
+              isResult: false,
+              canvasId: folder.id,
+              jobStatus: 'idle',
+            },
+          })
+        }
       }
     }
 
@@ -557,8 +578,9 @@ async function convertFileNode(
     canvasId,
   )
 
-  const sourcePreview =
-    sourceFile.previewUrl || sourceFile.objectUrl || undefined
+  const sourcePreview = isHeicLikeFile(sourceFile)
+    ? sourceFile.previewUrl
+    : sourceFile.previewUrl || sourceFile.objectUrl || undefined
 
   const placeholder: FileEntry = {
     id: resultFileId,
@@ -763,22 +785,109 @@ async function convertFolder(
   }
   walk(sourceFolder)
 
-  const newChildIds: string[] = []
-  const filesUpdate: Record<string, FileEntry> = {}
-  const newNodes: AppNode[] = []
   const takenInFolder: string[] = []
+  const childSpecs: FolderChildSpec[] = sourceFiles.map((f) => ({
+    kind: 'file' as const,
+    file: f,
+  }))
+  const positions = resolveFolderChildPositions(
+    newFolderId,
+    get().nodes,
+    get().files,
+    childSpecs,
+  )
 
-  let i = 0
-  for (const sourceFile of sourceFiles) {
+  type PendingChild = {
+    sourceFile: FileEntry
+    resultFileId: string
+    resultNodeId: string
+    resultName: string
+    position: XYPosition
+  }
+  const pending: PendingChild[] = []
+
+  for (let i = 0; i < sourceFiles.length; i++) {
+    const sourceFile = sourceFiles[i]
+    const resultFileId = uid('file')
+    const resultNodeId = uid('node')
+    const resultName = uniqueFileName(
+      rewriteExtension(sourceFile.name, settings.format),
+      takenInFolder,
+    )
+    takenInFolder.push(resultName)
+    const sourcePreview = isHeicLikeFile(sourceFile)
+      ? sourceFile.previewUrl
+      : sourceFile.previewUrl || sourceFile.objectUrl || undefined
+
+    pending.push({
+      sourceFile,
+      resultFileId,
+      resultNodeId,
+      resultName,
+      position: positions[i] ?? { x: 80, y: 80 },
+    })
+
+    const placeholder: FileEntry = {
+      id: resultFileId,
+      name: resultName,
+      extension: settings.format === 'jpg' ? 'jpg' : settings.format,
+      mimeType: 'application/octet-stream',
+      blob: new Blob(),
+      objectUrl: '',
+      previewUrl: sourcePreview,
+      size: 0,
+      width: sourceFile.width,
+      height: sourceFile.height,
+    }
+
+    set((s) => ({
+      files: { ...s.files, [resultFileId]: placeholder },
+      folders: {
+        ...s.folders,
+        [newFolderId]: {
+          ...s.folders[newFolderId],
+          childFileIds: [...s.folders[newFolderId].childFileIds, resultFileId],
+        },
+      },
+      nodes: [
+        ...s.nodes,
+        {
+          id: resultNodeId,
+          type: 'file',
+          position: pending[pending.length - 1].position,
+          data: {
+            kind: 'file',
+            fileId: resultFileId,
+            label: resultName,
+            isResult: true,
+            canvasId: newFolderId,
+            settings,
+            jobStatus: 'running',
+            jobProgress: 0,
+            conversionWavePending: true,
+          },
+        },
+      ],
+    }))
+  }
+
+  const MAX_FOLDER_CONVERT_CONCURRENCY = 4
+  let cursor = 0
+  let failures = 0
+
+  const runOne = async (item: PendingChild) => {
+    const { sourceFile, resultFileId, resultNodeId, resultName } = item
     try {
-      const blob = await runConversion(sourceFile, settings)
+      const blob = await runConversion(sourceFile, settings, (p) => {
+        set((s) => ({
+          nodes: s.nodes.map((n) =>
+            n.id === resultNodeId && n.data.kind === 'file'
+              ? { ...n, data: { ...n.data, jobProgress: p } }
+              : n,
+          ),
+        }))
+      })
       const objectUrl = URL.createObjectURL(blob)
-      const resultFileId = uid('file')
-      const resultName = uniqueFileName(
-        rewriteExtension(sourceFile.name, settings.format),
-        takenInFolder,
-      )
-      takenInFolder.push(resultName)
       const entry: FileEntry = {
         id: resultFileId,
         name: resultName,
@@ -787,43 +896,82 @@ async function convertFolder(
         blob,
         objectUrl,
         size: blob.size,
+        width: sourceFile.width,
+        height: sourceFile.height,
       }
-      filesUpdate[resultFileId] = entry
-      newChildIds.push(resultFileId)
-      newNodes.push({
-        id: uid('node'),
-        type: 'file',
-        position: { x: 80 + (i % 4) * 220, y: 80 + Math.floor(i / 4) * 280 },
-        data: {
-          kind: 'file',
-          fileId: resultFileId,
-          label: resultName,
-          isResult: true,
-          canvasId: newFolderId,
-          settings,
-          jobStatus: 'done',
-          jobProgress: 1,
-        },
-      })
-      i++
+
+      try {
+        const img = new Image()
+        await new Promise<void>((res, rej) => {
+          img.onload = () => res()
+          img.onerror = () => rej()
+          img.src = objectUrl
+        })
+        entry.width = img.naturalWidth
+        entry.height = img.naturalHeight
+      } catch {
+        /* keep source dimensions */
+      }
+
+      set((s) => ({
+        files: { ...s.files, [resultFileId]: entry },
+        nodes: s.nodes.map((n) =>
+          n.id === resultNodeId && n.data.kind === 'file'
+            ? {
+                ...n,
+                data: {
+                  ...n.data,
+                  jobStatus: 'done',
+                  jobProgress: 1,
+                },
+              }
+            : n,
+        ),
+      }))
     } catch (e) {
+      failures++
       console.error(e)
+      set((s) => ({
+        nodes: s.nodes.map((n) =>
+          n.id === resultNodeId && n.data.kind === 'file'
+            ? {
+                ...n,
+                data: {
+                  ...n.data,
+                  jobStatus: 'error',
+                  jobProgress: 1,
+                  conversionWavePending: false,
+                },
+              }
+            : n,
+        ),
+      }))
     }
   }
 
-  set((s) => ({
-    files: { ...s.files, ...filesUpdate },
-    folders: {
-      ...s.folders,
-      [newFolderId]: { ...s.folders[newFolderId], childFileIds: newChildIds },
+  const workers = Array.from(
+    { length: Math.min(MAX_FOLDER_CONVERT_CONCURRENCY, pending.length) },
+    async () => {
+      while (cursor < pending.length) {
+        const index = cursor++
+        await runOne(pending[index])
+      }
     },
-    nodes: [
-      ...s.nodes.map((n) =>
-        n.id === resultNodeId && n.data.kind === 'folder'
-          ? { ...n, data: { ...n.data, jobStatus: 'done' as const } }
-          : n,
-      ),
-      ...newNodes,
-    ],
+  )
+  await Promise.all(workers)
+
+  set((s) => ({
+    nodes: s.nodes.map((n) =>
+      n.id === resultNodeId && n.data.kind === 'folder'
+        ? {
+            ...n,
+            data: {
+              ...n.data,
+              jobStatus:
+                pending.length > 0 && failures === pending.length ? 'error' : 'done',
+            },
+          }
+        : n,
+    ),
   }))
 }
