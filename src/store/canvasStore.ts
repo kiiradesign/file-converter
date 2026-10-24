@@ -40,6 +40,7 @@ import {
   rectAt,
   resolveParentImportPosition,
   estimateImportNodeSize,
+  resolveFolderChildPositions,
 } from '../lib/importNodePlacement'
 import { computeDefaultResultPosition } from '../lib/resultNodePlacement'
 import { DEFAULT_SETTINGS } from '../types'
@@ -298,43 +299,62 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     // so drill-in works for nested directories too.
     const allFolders = [graph.folder, ...graph.nestedFolders]
     for (const folder of allFolders) {
-      let i = 0
+      const childItems: {
+        kind: 'file' | 'folder'
+        file?: FileEntry
+        fileId?: string
+        childFolderId?: string
+      }[] = []
       for (const fileId of folder.childFileIds) {
         const entry = files[fileId]
         if (!entry) continue
-        nodes.push({
-          id: uid('node'),
-          type: 'file',
-          position: { x: 80 + (i % 4) * 220, y: 80 + Math.floor(i / 4) * 280 },
-          data: {
-            kind: 'file',
-            fileId: entry.id,
-            label: fileLabel(entry.name, false),
-            isResult: false,
-            canvasId: folder.id,
-            jobStatus: 'idle',
-          },
-        })
-        i++
+        childItems.push({ kind: 'file', file: entry, fileId: entry.id })
       }
       for (const childId of folder.childFolderIds) {
         const child = folders[childId]
         if (!child) continue
-        nodes.push({
-          id: uid('node'),
-          type: 'folder',
-          position: { x: 80 + (i % 4) * 160, y: 80 + Math.floor(i / 4) * 180 },
-          data: {
-            kind: 'folder',
-            folderId: child.id,
-            label: child.name,
-            isResult: false,
-            canvasId: folder.id,
-            jobStatus: 'idle',
-          },
-        })
-        i++
+        childItems.push({ kind: 'folder', childFolderId: child.id })
       }
+
+      const canvasObstacles = buildCanvasObstacleRects(nodes, files, folder.id)
+      const positions = resolveFolderChildPositions(
+        childItems.map((c) => ({ kind: c.kind, file: c.file })),
+        undefined,
+        canvasObstacles,
+      )
+
+      childItems.forEach((item, i) => {
+        if (item.kind === 'file' && item.fileId) {
+          nodes.push({
+            id: uid('node'),
+            type: 'file',
+            position: positions[i],
+            data: {
+              kind: 'file',
+              fileId: item.fileId,
+              label: fileLabel(files[item.fileId]?.name ?? '', false),
+              isResult: false,
+              canvasId: folder.id,
+              jobStatus: 'idle',
+            },
+          })
+        } else if (item.childFolderId) {
+          const child = folders[item.childFolderId]
+          nodes.push({
+            id: uid('node'),
+            type: 'folder',
+            position: positions[i],
+            data: {
+              kind: 'folder',
+              folderId: item.childFolderId,
+              label: child?.name ?? 'Folder',
+              isResult: false,
+              canvasId: folder.id,
+              jobStatus: 'idle',
+            },
+          })
+        }
+      })
     }
 
     if (canvasId && folders[canvasId]) {
@@ -763,53 +783,79 @@ async function convertFolder(
   }
   walk(sourceFolder)
 
-  const newChildIds: string[] = []
-  const filesUpdate: Record<string, FileEntry> = {}
-  const newNodes: AppNode[] = []
-  const takenInFolder: string[] = []
-
-  let i = 0
-  for (const sourceFile of sourceFiles) {
-    try {
-      const blob = await runConversion(sourceFile, settings)
-      const objectUrl = URL.createObjectURL(blob)
-      const resultFileId = uid('file')
-      const resultName = uniqueFileName(
-        rewriteExtension(sourceFile.name, settings.format),
-        takenInFolder,
-      )
-      takenInFolder.push(resultName)
-      const entry: FileEntry = {
-        id: resultFileId,
-        name: resultName,
-        extension: settings.format === 'jpg' ? 'jpg' : settings.format,
-        mimeType: blob.type,
-        blob,
-        objectUrl,
-        size: blob.size,
-      }
-      filesUpdate[resultFileId] = entry
-      newChildIds.push(resultFileId)
-      newNodes.push({
-        id: uid('node'),
-        type: 'file',
-        position: { x: 80 + (i % 4) * 220, y: 80 + Math.floor(i / 4) * 280 },
-        data: {
-          kind: 'file',
-          fileId: resultFileId,
-          label: resultName,
-          isResult: true,
-          canvasId: newFolderId,
-          settings,
-          jobStatus: 'done',
-          jobProgress: 1,
-        },
-      })
-      i++
-    } catch (e) {
-      console.error(e)
-    }
+  type PendingFile = {
+    sourceFile: FileEntry
+    resultFileId: string
+    resultNodeId: string
+    resultName: string
   }
+
+  const takenInFolder: string[] = []
+  const pending: PendingFile[] = []
+  for (const sourceFile of sourceFiles) {
+    const resultFileId = uid('file')
+    const resultName = uniqueFileName(
+      rewriteExtension(sourceFile.name, settings.format),
+      takenInFolder,
+    )
+    takenInFolder.push(resultName)
+    pending.push({
+      sourceFile,
+      resultFileId,
+      resultNodeId: uid('node'),
+      resultName,
+    })
+  }
+
+  const canvasObstacles = buildCanvasObstacleRects(
+    get().nodes,
+    get().files,
+    newFolderId,
+  )
+  const positions = resolveFolderChildPositions(
+    pending.map((p) => ({ kind: 'file' as const, file: p.sourceFile })),
+    undefined,
+    canvasObstacles,
+  )
+
+  const filesUpdate: Record<string, FileEntry> = {}
+  const newChildIds: string[] = []
+  const newNodes: AppNode[] = []
+
+  pending.forEach((item, idx) => {
+    const sourcePreview =
+      item.sourceFile.previewUrl || item.sourceFile.objectUrl || undefined
+    const placeholder: FileEntry = {
+      id: item.resultFileId,
+      name: item.resultName,
+      extension: settings.format === 'jpg' ? 'jpg' : settings.format,
+      mimeType: 'application/octet-stream',
+      blob: new Blob(),
+      objectUrl: '',
+      previewUrl: sourcePreview,
+      size: 0,
+      width: item.sourceFile.width,
+      height: item.sourceFile.height,
+    }
+    filesUpdate[item.resultFileId] = placeholder
+    newChildIds.push(item.resultFileId)
+    newNodes.push({
+      id: item.resultNodeId,
+      type: 'file',
+      position: positions[idx],
+      data: {
+        kind: 'file',
+        fileId: item.resultFileId,
+        label: item.resultName,
+        isResult: true,
+        canvasId: newFolderId,
+        settings,
+        jobStatus: 'running',
+        jobProgress: 0,
+        conversionWavePending: true,
+      },
+    })
+  })
 
   set((s) => ({
     files: { ...s.files, ...filesUpdate },
@@ -817,13 +863,106 @@ async function convertFolder(
       ...s.folders,
       [newFolderId]: { ...s.folders[newFolderId], childFileIds: newChildIds },
     },
-    nodes: [
-      ...s.nodes.map((n) =>
+    nodes: [...s.nodes, ...newNodes],
+  }))
+
+  if (pending.length === 0) {
+    set((s) => ({
+      nodes: s.nodes.map((n) =>
         n.id === resultNodeId && n.data.kind === 'folder'
           ? { ...n, data: { ...n.data, jobStatus: 'done' as const } }
           : n,
       ),
-      ...newNodes,
-    ],
+    }))
+    return
+  }
+
+  let nextIndex = 0
+  const workerCount = Math.min(4, pending.length)
+
+  const runOne = async (item: PendingFile) => {
+    try {
+      const blob = await runConversion(item.sourceFile, settings, (p) => {
+        set((s) => ({
+          nodes: s.nodes.map((n) =>
+            n.id === item.resultNodeId && n.data.kind === 'file'
+              ? { ...n, data: { ...n.data, jobProgress: p } }
+              : n,
+          ),
+        }))
+      })
+      const objectUrl = URL.createObjectURL(blob)
+      const entry: FileEntry = {
+        ...filesUpdate[item.resultFileId],
+        blob,
+        objectUrl,
+        size: blob.size,
+        mimeType: blob.type,
+      }
+
+      try {
+        const img = new Image()
+        await new Promise<void>((res, rej) => {
+          img.onload = () => res()
+          img.onerror = () => rej()
+          img.src = objectUrl
+        })
+        entry.width = img.naturalWidth
+        entry.height = img.naturalHeight
+      } catch {
+        /* keep source dimensions */
+      }
+
+      set((s) => ({
+        files: { ...s.files, [item.resultFileId]: entry },
+        nodes: s.nodes.map((n) =>
+          n.id === item.resultNodeId && n.data.kind === 'file'
+            ? {
+                ...n,
+                data: {
+                  ...n.data,
+                  jobStatus: 'done',
+                  jobProgress: 1,
+                },
+              }
+            : n,
+        ),
+      }))
+    } catch (err) {
+      console.error(err)
+      set((s) => ({
+        nodes: s.nodes.map((n) =>
+          n.id === item.resultNodeId && n.data.kind === 'file'
+            ? {
+                ...n,
+                data: {
+                  ...n.data,
+                  jobStatus: 'error',
+                  jobProgress: 1,
+                  conversionWavePending: false,
+                },
+              }
+            : n,
+        ),
+      }))
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: workerCount }, async () => {
+      while (true) {
+        const idx = nextIndex++
+        if (idx >= pending.length) break
+        await runOne(pending[idx])
+      }
+    }),
+  )
+
+  set((s) => ({
+    nodes: s.nodes.map((n) =>
+      n.id === resultNodeId && n.data.kind === 'folder'
+        ? { ...n, data: { ...n.data, jobStatus: 'done' as const } }
+        : n,
+    ),
   }))
 }

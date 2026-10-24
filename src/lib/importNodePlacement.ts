@@ -155,3 +155,35 @@ export function centeredImportPosition(
     y: center.y - size.height / 2,
   }
 }
+
+export const FOLDER_CHILD_ANCHOR: XYPosition = { x: 80, y: 80 }
+
+export type FolderChildPlacementItem = {
+  kind: 'file' | 'folder'
+  file?: Pick<FileEntry, 'width' | 'height'>
+}
+
+/**
+ * Non-overlapping positions for many nodes on the same folder canvas
+ * (drill-in children or batch-convert result files).
+ */
+export function resolveFolderChildPositions(
+  items: FolderChildPlacementItem[],
+  anchor: XYPosition = FOLDER_CHILD_ANCHOR,
+  canvasObstacles: PlacementRect[] = [],
+): XYPosition[] {
+  const batchPlaced: PlacementRect[] = []
+  const positions: XYPosition[] = []
+  for (const item of items) {
+    const pos = resolveParentImportPosition(
+      anchor,
+      item.kind,
+      item.file,
+      canvasObstacles,
+      batchPlaced,
+    )
+    positions.push(pos)
+    batchPlaced.push(rectAt(pos, estimateImportNodeSize(item.kind, item.file)))
+  }
+  return positions
+}

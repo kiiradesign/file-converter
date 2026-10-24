@@ -24,6 +24,18 @@ type LibHeifFactory = (options?: unknown) => LibHeif | Promise<LibHeif>
 
 let libheifPromise: Promise<LibHeif> | null = null
 
+/** libheif WASM is not reliable under heavy parallel decode — serialize. */
+let heicDecodeChain: Promise<unknown> = Promise.resolve()
+
+function withHeicDecodeLock<T>(fn: () => Promise<T>): Promise<T> {
+  const run = heicDecodeChain.then(fn, fn)
+  heicDecodeChain = run.then(
+    () => undefined,
+    () => undefined,
+  )
+  return run
+}
+
 async function loadLibHeif(): Promise<LibHeif> {
   if (!libheifPromise) {
     libheifPromise = (async () => {
@@ -58,6 +70,7 @@ export function isHeicSource(ext: string, mime?: string): boolean {
 
 /** Decode the primary frame of a HEIC/HEIF blob into ImageData (RGBA). */
 export async function decodeHeicToImageData(blob: Blob): Promise<ImageData> {
+  return withHeicDecodeLock(async () => {
   const libheif = await loadLibHeif()
   const buffer = await blob.arrayBuffer()
   const decoder = new libheif.HeifDecoder()
@@ -90,6 +103,7 @@ export async function decodeHeicToImageData(blob: Blob): Promise<ImageData> {
   })
 
   return imageData
+  })
 }
 
 export type HeicPreview = {
