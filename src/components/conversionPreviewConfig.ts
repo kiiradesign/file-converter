@@ -74,9 +74,6 @@ export const FLUTED_GLASS_CLEAR = {
   scale: 1,
 }
 
-/** @deprecated Use FLUTED_GLASS_LOAD */
-export const FLUTED_GLASS_START = FLUTED_GLASS_LOAD
-
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t
 }

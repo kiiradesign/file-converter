@@ -1,7 +1,7 @@
 /**
- * Headless smoke test for Milestone 1 conversion flow.
- * Uses the already-running dev server on 5173 when available.
- * Run: node scripts/smoke.mjs
+ * Headless smoke test (chrome, theme toggle, convert flow).
+ * Uses the dev server on 5173 when available (override with FC_URL).
+ * Run: npm run smoke
  */
 import puppeteer from 'puppeteer-core'
 

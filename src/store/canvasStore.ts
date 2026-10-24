@@ -61,8 +61,6 @@ export type FileNodeData = {
   jobProgress?: number
   /** True while the conversion dither wave should play (cleared when wave finishes). */
   conversionWavePending?: boolean
-  /** Bumped by debug replay to restart preview animation without re-encoding. */
-  conversionWaveReplayKey?: number
   sourceNodeId?: string
 }
 

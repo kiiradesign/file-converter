@@ -10,7 +10,9 @@ declare global {
   }
 }
 
-window.__FC_STORE__ = useCanvasStore
+if (import.meta.env.DEV) {
+  window.__FC_STORE__ = useCanvasStore
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

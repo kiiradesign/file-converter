@@ -1,62 +1,56 @@
 # File Converter
 
-**Convert images on an infinite canvas — formats, quality, and folders, all in the browser.**
+**Final web app (v0.1)** — convert images on an infinite canvas in the browser. Everything runs locally in your tab; nothing is uploaded to a server.
 
-File Converter is a local-first tool for turning PNGs, JPGs, WEBPs (and more) into other formats without uploading anything. Drop files or whole folders onto a dotted canvas, wire conversions with `+`, tweak quality and resolution, then save results.
-
-Built for people who want conversion to feel like arranging work on a desk — not filling out a form.
+A **native macOS desktop app** is planned later via [Tauri](https://tauri.app/). That wrapper is **not shipped yet**; this repository is the production web build. See [docs/tauri-readiness.md](docs/tauri-readiness.md) for how the codebase stays ready for a future shell.
 
 ---
 
-## Why File Converter?
+## What it does
 
-Most converters are upload → wait → download, with no sense of history. Here every convert and compress step is a **new node** on the canvas. The graph *is* the version history. Folders drill in. Nothing leaves your machine.
+File Converter is a local-first tool for turning PNGs, JPGs, WEBPs, HEIC, SVG, and more into other formats without leaving your machine. Drop files or whole folders onto a dotted canvas, connect conversions with **`+`**, tune quality and resolution, then save results. Each convert or compress step becomes a **new node** on the canvas — the graph is your version history.
+
+### Key UX
+
+| Area | Behavior |
+|------|----------|
+| **Infinite canvas** | React Flow dotted surface; pan/zoom; file and folder nodes with aspect-correct previews at full source resolution |
+| **Folders** | Import a directory (picker or drag-and-drop), drill in with a click, navigate back with breadcrumbs |
+| **Convert** | Hover a file → **`+`** → pick a target format (source format is excluded; use **Compress** to re-encode same type) |
+| **Batch folder convert** | Start connect from a **folder** node → same quality/resolution panel → **Convert** runs all convertible children into a new result folder tree |
+| **Compress** | On a result node, re-encode further in the same format (never mutates the original source node) |
+| **Fluted-glass preview** | While encoding, a shader “wave” reveals the output; when the job finishes, crossfade to the final image |
+| **Save** | Download a single file, or zip an entire folder (keeps relative paths) |
+| **Theme** | Dark / light chrome |
 
 ---
 
-## Features
+## Supported formats
 
-- **Infinite dotted canvas** with file and folder nodes (aspect-correct previews at full source resolution)
-- **Add files or an entire folder** — double-click → Files / Folder chooser; Shift-double-click → folder picker; drag-and-drop folders
-- **In-browser encode:** PNG, JPG, WEBP, AVIF, GIF, BMP, PDF
-- Convert list shows **other formats only** (same-format re-encode stays on **Compress**)
-- **Quality** and **Resolution** sliders
-- **Compress** creates a new chained same-format result (never mutates the source)
-- **Save** downloads a file; folder Save zips contents
-- Folder drill-in with breadcrumb back navigation
-- Dark / light chrome
-- Fully **client-side** — no server uploads, no tracking
+| Role | Extensions |
+|------|------------|
+| **Decode (sources)** | PNG, JPG/JPEG, WEBP, GIF, BMP, AVIF, HEIC/HEIF, SVG |
+| **Encode (outputs)** | PNG, JPG, WEBP, AVIF, GIF, BMP, PDF |
+| **Notes** | HEIC/HEIF and SVG are decode-only in the browser (preview + convert *from* them). PDF output rasterizes the image. |
+
+Encoders: Canvas API (PNG/JPG/WEBP), `@jsquash/avif`, `gifenc`, BMP writer, `jspdf`, `libheif-js` (HEIC preview), SVG rasterization.
 
 ---
 
 ## How to use
 
-1. **Add media**
-   - Double-click empty canvas → choose **Files** or **Folder**
-   - Or **drop** files/folders onto the canvas
-   - Or **Shift-double-click** to open the folder picker directly
-2. Hover a file → click **`+`** to convert to another format (source format is not listed).
-3. Pick a format, tune quality / resolution, click **Convert**.
-4. Hover a result → **Compress** to re-encode further (same type); or **Save** to download.
-5. Click a **folder** node to drill in; use the breadcrumb to go back.
-
-That's it.
+1. **Add media** — Double-click empty canvas → **Files** or **Folder**; drag-and-drop files/folders; or **Shift-double-click** for the folder picker.
+2. **Convert** — Hover a file → **`+`** → choose format → adjust **Quality** / **Resolution** → **Convert**.
+3. **Folder batch** — Hover a folder → **`+`** → format and sliders → **Convert** (creates a parallel result folder).
+4. **Compress** — Hover a finished result → **Compress** to chain another same-format encode.
+5. **Save** — **Save** on a file or folder node to download (folder → ZIP).
+6. **Drill-in** — Click a folder node; use the breadcrumb to go back.
 
 ---
 
-## Tech
+## Run and build
 
-- Vite + React 19 + TypeScript
-- React Flow (`@xyflow/react`) canvas
-- Geist typography + Dialkit sliders
-- Encoders: Canvas (`png` / `jpg` / `webp`), `@jsquash/avif`, `gifenc`, BMP writer, `jspdf`
-- Zustand store; JSZip for folder download
-
-No backend. No uploads. No tracking.
-
----
-
-## Local development
+**Requirements:** Node.js 20+ (LTS recommended), npm.
 
 ```bash
 git clone https://github.com/kiiradesign/file-converter.git
@@ -68,6 +62,28 @@ npm run dev -- --host 127.0.0.1 --port 5173
 Open [http://127.0.0.1:5173/](http://127.0.0.1:5173/).
 
 ```bash
-npm run build   # production build
-npm run lint    # oxlint
+npm run build    # typecheck + production bundle → dist/
+npm run preview  # serve dist/ locally
+npm run lint     # oxlint
+npm run smoke    # headless UI smoke (dev server must be running)
 ```
+
+There is **no backend**. The app is static assets after `npm run build`; deploy `dist/` to any static host.
+
+---
+
+## Tech stack
+
+- **UI:** Vite, React 19, TypeScript, `@xyflow/react`, Geist, Dialkit sliders, Motion
+- **Preview:** `@paper-design/shaders-react` (fluted-glass reveal)
+- **State:** Zustand
+- **I/O:** Browser file APIs + JSZip for folder download
+- **Conversion:** `src/convert/web/*` encoders; job queue with bounded concurrency
+
+Platform routing (`src/platform.ts`, `src/io/*`, `src/convert/desktop/*`) keeps web and future desktop paths separate — details in [docs/tauri-readiness.md](docs/tauri-readiness.md).
+
+---
+
+## License
+
+See [LICENSE](LICENSE).
