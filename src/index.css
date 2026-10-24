@@ -833,6 +833,9 @@ button {
   flex-shrink: 0;
   width: 96px;
   height: 82px;
+  z-index: 1;
+  contain: layout style;
+  isolation: isolate;
 }
 
 .folder-node__glyph {
@@ -843,7 +846,17 @@ button {
   pointer-events: none;
   user-select: none;
   -webkit-user-drag: none;
+  min-width: 1px;
+  min-height: 1px;
+  opacity: 1;
+  visibility: visible;
+  transform-origin: center center;
   transition: transform var(--duration-hover) var(--ease-out);
+}
+
+.folder-node__glyph--fallback {
+  background: center / contain no-repeat url('/folder-icon.png');
+  filter: none;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -859,6 +872,8 @@ button {
 }
 
 .folder-node__label {
+  position: relative;
+  z-index: 0;
   font-size: 13px;
   font-weight: 500;
   color: var(--fc-text);
@@ -869,6 +884,7 @@ button {
   text-overflow: ellipsis;
   white-space: nowrap;
   transform-origin: center top;
+  pointer-events: none;
 }
 
 .folder-node__plus {

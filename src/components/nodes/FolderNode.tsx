@@ -1,11 +1,58 @@
 import { Handle, Position, useViewport, type NodeProps } from '@xyflow/react'
 import { Plus } from 'lucide-react'
-import { memo, useState } from 'react'
+import { memo, useCallback, useState } from 'react'
 import { useCanvasStore, type FolderNodeData } from '../../store/canvasStore'
 
 /** Display size for the macOS folder PNG (source 1004×854). */
 const ICON_W = 96
 const ICON_H = Math.round((ICON_W * 854) / 1004)
+
+const FOLDER_ICON_BASE = `${import.meta.env.BASE_URL}folder-icon.png`.replace(
+  /\/{2,}/g,
+  '/',
+)
+
+function FolderGlyph({ width, height }: { width: number; height: number }) {
+  const [src, setSrc] = useState(FOLDER_ICON_BASE)
+  const [useFallback, setUseFallback] = useState(false)
+  const [retry, setRetry] = useState(0)
+
+  const onError = useCallback(() => {
+    if (retry < 2) {
+      const next = retry + 1
+      setRetry(next)
+      const sep = FOLDER_ICON_BASE.includes('?') ? '&' : '?'
+      setSrc(`${FOLDER_ICON_BASE}${sep}v=${next}&t=${Date.now()}`)
+      return
+    }
+    setUseFallback(true)
+  }, [retry])
+
+  if (useFallback) {
+    return (
+      <div
+        className="folder-node__glyph folder-node__glyph--fallback"
+        style={{ width, height }}
+        aria-hidden
+      />
+    )
+  }
+
+  return (
+    <img
+      className="folder-node__glyph"
+      src={src}
+      alt=""
+      width={width}
+      height={height}
+      draggable={false}
+      decoding="async"
+      loading="eager"
+      fetchPriority="high"
+      onError={onError}
+    />
+  )
+}
 
 function FolderNodeComponent({ id, data }: NodeProps & { data: FolderNodeData }) {
   const { zoom } = useViewport()
@@ -44,15 +91,7 @@ function FolderNodeComponent({ id, data }: NodeProps & { data: FolderNodeData })
       }}
     >
       <div className="folder-node__glyph-wrap" style={{ width: ICON_W, height: ICON_H }}>
-        <img
-          className="folder-node__glyph"
-          src="/folder-icon.png"
-          alt=""
-          width={ICON_W}
-          height={ICON_H}
-          draggable={false}
-          decoding="async"
-        />
+        <FolderGlyph width={ICON_W} height={ICON_H} />
 
         {/* Handles sit on the icon’s left/right edges at vertical mid — not the label box. */}
         <Handle
