@@ -4,18 +4,13 @@ File Converter is a local-first tool for turning PNGs, JPGs, WEBPs, HEIC, SVG, a
 
 ## Features
 
-- **Local, in-browser conversion** — Files stay on your machine; no upload server. Static build deploys anywhere.
-- **Infinite canvas workspace** — Pan and zoom a dotted canvas; every import and result is a node you can arrange.
-- **Single-file convert** — Pick a target format (source type excluded), set quality and resolution, and spawn a linked result node.
-- **Compress / re-encode** — Chain further encodes on a result node in the same format without touching the original source.
-- **Folders as first-class nodes** — Import a directory (picker, Shift+click, or drag-and-drop), drill in with a click, navigate with breadcrumbs.
-- **Batch folder convert** — Convert every decodable image in a folder tree into a new result folder; open it while jobs run to see per-file progress and preview animation.
-- **HEIC / HEIF support** — Libheif decodes Apple photos for preview and conversion; thumbnails always use a displayable JPEG preview.
-- **SVG and PDF** — Rasterize SVG for preview and conversion; optional PDF output from images.
-- **Fluted-glass conversion preview** — Shader reveal on the source while encoding; crossfade to the final image when the job completes.
-- **Collision-aware layout** — Imports and folder children are placed so previews do not overlap on the canvas.
-- **Save & export** — Download one file from a node, or ZIP an entire folder (nested paths preserved).
-- **Dark and light chrome** — Theme toggle for the floating UI and canvas chrome.
+- **Local-first** — Conversion runs in your browser; files are not uploaded to a server.
+- **Canvas workflow** — Drop files or folders on an infinite canvas; each convert adds a linked result node (your graph is the history).
+- **Quality & format control** — Pick output format, quality, and resolution from the convert panel.
+- **Folders & batch convert** — Import a directory, drill in, and convert every image in the tree into a new result folder.
+- **HEIC / HEIF** — Preview and convert Apple photos in the browser.
+- **Live preview** — Fluted-glass animation while a job runs, then the finished image.
+- **Export** — Save a single file or download a folder as a ZIP.
 
 ### Key UX
 
