@@ -2,6 +2,21 @@
 
 File Converter is a local-first tool for turning PNGs, JPGs, WEBPs, HEIC, SVG, and more into other formats without leaving your machine. Drop files or whole folders onto a dotted canvas, connect conversions with **`+`**, tune quality and resolution, then save results. Each convert or compress step becomes a **new node** on the canvas — the graph is your version history.
 
+## Features
+
+- **Local, in-browser conversion** — Files stay on your machine; no upload server. Static build deploys anywhere.
+- **Infinite canvas workspace** — Pan and zoom a dotted canvas; every import and result is a node you can arrange.
+- **Single-file convert** — Pick a target format (source type excluded), set quality and resolution, and spawn a linked result node.
+- **Compress / re-encode** — Chain further encodes on a result node in the same format without touching the original source.
+- **Folders as first-class nodes** — Import a directory (picker, Shift+click, or drag-and-drop), drill in with a click, navigate with breadcrumbs.
+- **Batch folder convert** — Convert every decodable image in a folder tree into a new result folder; open it while jobs run to see per-file progress and preview animation.
+- **HEIC / HEIF support** — Libheif decodes Apple photos for preview and conversion; thumbnails always use a displayable JPEG preview.
+- **SVG and PDF** — Rasterize SVG for preview and conversion; optional PDF output from images.
+- **Fluted-glass conversion preview** — Shader reveal on the source while encoding; crossfade to the final image when the job completes.
+- **Collision-aware layout** — Imports and folder children are placed so previews do not overlap on the canvas.
+- **Save & export** — Download one file from a node, or ZIP an entire folder (nested paths preserved).
+- **Dark and light chrome** — Theme toggle for the floating UI and canvas chrome.
+
 ### Key UX
 
 | Area | Behavior |
