@@ -1,6 +1,6 @@
 import { Handle, Position, useViewport, type NodeProps } from '@xyflow/react'
 import { Download, Minimize2, Plus } from 'lucide-react'
-import { memo, useCallback, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useCanvasStore, type FileNodeData } from '../../store/canvasStore'
 import {
   fileOutputSrc,
@@ -25,11 +25,19 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
   const counter = 1 / Math.max(zoom, 0.01)
   const previewSrc = fileThumbnailSrc(file, { isResult: !!data.isResult })
   const outputSrc = fileOutputSrc(file, !!data.isResult)
+  // The fluted wave is drawn over the source preview; without one there is nothing to animate.
+  const canWave = !!previewSrc
+  const wavePending = canWave && data.conversionWavePending === true
   const converting =
-    data.isResult &&
-    (data.conversionWavePending === true || data.jobStatus === 'running')
+    data.isResult && canWave && (wavePending || data.jobStatus === 'running')
   /** Never pass output blob as display src while the conversion wave is active. */
   const src = converting ? previewSrc : outputSrc || previewSrc
+
+  useEffect(() => {
+    if (data.isResult && data.conversionWavePending && !canWave) {
+      finishConversionWave(id)
+    }
+  }, [data.isResult, data.conversionWavePending, canWave, finishConversionWave, id])
   const showHoverChrome = hovered && !draftOpen
 
   // Save on result nodes and on files inside a converted result folder.
@@ -146,7 +154,7 @@ function FileNodeComponent({ id, data }: NodeProps & { data: FileNodeData }) {
             mimeType={file?.mimeType}
             isResult={data.isResult}
             jobStatus={data.jobStatus}
-            conversionWavePending={data.conversionWavePending}
+            conversionWavePending={wavePending}
             onWaveComplete={onWaveComplete}
             onNaturalSize={onNaturalSize}
           />

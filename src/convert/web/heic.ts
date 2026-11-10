@@ -10,6 +10,7 @@ type HeifImage = {
     imageData: ImageData,
     callback: (displayData: ImageData | null) => void,
   ): void
+  free?(): void
 }
 
 type HeifDecoder = {
@@ -56,40 +57,67 @@ export function isHeicSource(ext: string, mime?: string): boolean {
   return isHeicExtension(ext) || isHeicMime(mime)
 }
 
-/** Decode the primary frame of a HEIC/HEIF blob into ImageData (RGBA). */
-export async function decodeHeicToImageData(blob: Blob): Promise<ImageData> {
+async function decodeHeicOnce(buffer: ArrayBuffer): Promise<ImageData> {
   const libheif = await loadLibHeif()
-  const buffer = await blob.arrayBuffer()
   const decoder = new libheif.HeifDecoder()
   const images = decoder.decode(new Uint8Array(buffer))
-  if (!images?.length) {
-    throw new Error('No images found in HEIC/HEIF file')
-  }
-  const image = images[0]
-  const width = image.get_width()
-  const height = image.get_height()
-  if (width < 1 || height < 1) {
-    throw new Error('Invalid HEIC dimensions')
-  }
+  try {
+    if (!images?.length) {
+      throw new Error('No images found in HEIC/HEIF file')
+    }
+    const image = images[0]
+    const width = image.get_width()
+    const height = image.get_height()
+    if (width < 1 || height < 1) {
+      throw new Error('Invalid HEIC dimensions')
+    }
 
-  const canvas = document.createElement('canvas')
-  canvas.width = width
-  canvas.height = height
-  const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('No 2d context')
-  const imageData = ctx.createImageData(width, height)
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('No 2d context')
+    const imageData = ctx.createImageData(width, height)
 
-  await new Promise<void>((resolve, reject) => {
-    image.display(imageData, (displayData) => {
-      if (!displayData) {
-        reject(new Error('HEIF processing error'))
-        return
-      }
-      resolve()
+    await new Promise<void>((resolve, reject) => {
+      image.display(imageData, (displayData) => {
+        if (!displayData) {
+          reject(new Error('HEIF processing error'))
+          return
+        }
+        resolve()
+      })
     })
-  })
 
-  return imageData
+    return imageData
+  } finally {
+    for (const img of images ?? []) img.free?.()
+  }
+}
+
+/**
+ * libheif's single WASM heap is not safe for overlapping decodes (folder ingest +
+ * parallel folder convert); run one at a time.
+ */
+let heicDecodeQueue: Promise<unknown> = Promise.resolve()
+const HEIC_DECODE_ATTEMPTS = 3
+
+/** Decode the primary frame of a HEIC/HEIF blob into ImageData (RGBA). */
+export async function decodeHeicToImageData(blob: Blob): Promise<ImageData> {
+  const buffer = await blob.arrayBuffer()
+  const run = heicDecodeQueue.then(async () => {
+    let lastErr: unknown
+    for (let attempt = 0; attempt < HEIC_DECODE_ATTEMPTS; attempt++) {
+      try {
+        return await decodeHeicOnce(buffer)
+      } catch (err) {
+        lastErr = err
+      }
+    }
+    throw lastErr
+  })
+  heicDecodeQueue = run.catch(() => undefined)
+  return run
 }
 
 export type HeicPreview = {

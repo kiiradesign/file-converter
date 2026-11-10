@@ -800,6 +800,7 @@ async function convertFolder(
     resultFileId: string
     resultNodeId: string
     resultName: string
+    sourcePreview: string | undefined
     position: XYPosition
   }
   const pending: PendingChild[] = []
@@ -822,6 +823,7 @@ async function convertFolder(
       resultFileId,
       resultNodeId,
       resultName,
+      sourcePreview,
       position: positions[i] ?? { x: 80, y: 80 },
     })
 
@@ -874,7 +876,7 @@ async function convertFolder(
   let failures = 0
 
   const runOne = async (item: PendingChild) => {
-    const { sourceFile, resultFileId, resultNodeId, resultName } = item
+    const { sourceFile, resultFileId, resultNodeId, resultName, sourcePreview } = item
     try {
       const blob = await runConversion(sourceFile, settings, (p) => {
         set((s) => ({
@@ -893,6 +895,7 @@ async function convertFolder(
         mimeType: blob.type,
         blob,
         objectUrl,
+        previewUrl: sourcePreview,
         size: blob.size,
         width: sourceFile.width,
         height: sourceFile.height,
