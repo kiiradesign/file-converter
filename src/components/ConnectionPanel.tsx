@@ -4,7 +4,8 @@ import { ArrowLeft } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { compatibleTargets, formatLabel, WEB_ENCODE_FORMATS } from '../convert/formats'
 import { useCanvasStore, type AppNode } from '../store/canvasStore'
-import type { ConvertFormat } from '../types'
+import { runConversion } from '../convert/jobs'
+import type { ConvertFormat, ConvertSettings, FileEntry } from '../types'
 import 'dialkit/styles.css'
 
 /** Both sliders share 1–100 so equal values land at the same fill position. */
@@ -159,11 +160,6 @@ export function ConnectionPanel() {
 
   if (!draft || !source) return null
 
-  const estimated =
-    source.data.kind === 'file'
-      ? estimateSize(files[source.data.fileId]?.size ?? 0, draft.settings)
-      : null
-
   return (
     <div
       ref={panelRef}
@@ -219,9 +215,14 @@ export function ConnectionPanel() {
           <ConvertSliders />
 
           <div className="size-hint">
-            {estimated != null
-              ? `Est. output ~ ${formatBytes(estimated)}`
-              : 'Batch folder conversion'}
+            {source.data.kind === 'file' ? (
+              <OutputSizeHint
+                source={files[source.data.fileId]}
+                settings={draft.settings}
+              />
+            ) : (
+              'Batch folder conversion'
+            )}
           </div>
 
           <div className="actions">
@@ -239,33 +240,56 @@ export function ConnectionPanel() {
   )
 }
 
-function estimateSize(
-  sourceBytes: number,
-  settings: { quality: number; resolution: number; format: string },
-) {
-  if (!sourceBytes) return 0
-  const scale = (settings.resolution / 100) ** 2
-  const q = settings.quality / 100
-  const formatFactor =
-    settings.format === 'png'
-      ? 0.9
-      : settings.format === 'jpg'
-        ? 0.35
-        : settings.format === 'webp'
-          ? 0.28
-          : settings.format === 'avif'
-            ? 0.2
-            : settings.format === 'gif'
-              ? 0.45
-              : settings.format === 'bmp'
-                ? 1.1
-                : settings.format === 'pdf'
-                  ? 0.95
-                  : 0.3
-  return Math.max(
-    1024,
-    Math.round(sourceBytes * scale * (0.25 + q * 0.75) * formatFactor),
-  )
+const ESTIMATE_DEBOUNCE_MS = 300
+
+/**
+ * Exact output size: runs the real encode with the current settings (debounced
+ * while sliders move) instead of guessing from the source byte count.
+ */
+function useOutputSize(
+  source: FileEntry | undefined,
+  settings: ConvertSettings,
+): { bytes: number | null; failed: boolean } {
+  const [result, setResult] = useState<{
+    key: string
+    bytes: number | null
+    failed: boolean
+  } | null>(null)
+  const key = source ? `${source.id}|${JSON.stringify(settings)}` : ''
+
+  useEffect(() => {
+    if (!source) return
+    let cancelled = false
+    const timer = window.setTimeout(() => {
+      runConversion(source, settings)
+        .then((blob) => {
+          if (!cancelled) setResult({ key, bytes: blob.size, failed: false })
+        })
+        .catch(() => {
+          if (!cancelled) setResult({ key, bytes: null, failed: true })
+        })
+    }, ESTIMATE_DEBOUNCE_MS)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [key, source, settings])
+
+  if (!result || result.key !== key) return { bytes: null, failed: false }
+  return { bytes: result.bytes, failed: result.failed }
+}
+
+function OutputSizeHint({
+  source,
+  settings,
+}: {
+  source: FileEntry | undefined
+  settings: ConvertSettings
+}) {
+  const { bytes, failed } = useOutputSize(source, settings)
+  if (failed) return <>Output size unavailable</>
+  if (bytes == null) return <>Calculating output size…</>
+  return <>Output size: {formatBytes(bytes)}</>
 }
 
 function formatBytes(n: number) {
